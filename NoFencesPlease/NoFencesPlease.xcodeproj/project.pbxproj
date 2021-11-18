@@ -9,12 +9,8 @@
 /* Begin PBXBuildFile section */
 		5F64639127461A6D00428242 /* ImagesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64638F27461A6D00428242 /* ImagesViewModel.swift */; };
 		5F64639227461A6D00428242 /* ImagesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64638F27461A6D00428242 /* ImagesViewModel.swift */; };
-		5F64639327461A6D00428242 /* ImagesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64638F27461A6D00428242 /* ImagesViewModel.swift */; };
-		5F64639427461A6D00428242 /* ImagesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64638F27461A6D00428242 /* ImagesViewModel.swift */; };
 		5F64639527461A6D00428242 /* Initialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64639027461A6D00428242 /* Initialization.swift */; };
 		5F64639627461A6D00428242 /* Initialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64639027461A6D00428242 /* Initialization.swift */; };
-		5F64639727461A6D00428242 /* Initialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64639027461A6D00428242 /* Initialization.swift */; };
-		5F64639827461A6D00428242 /* Initialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F64639027461A6D00428242 /* Initialization.swift */; };
 		5F64639F27461BB500428242 /* hanoi_input_4.png in Resources */ = {isa = PBXBuildFile; fileRef = 5F64639A27461BB400428242 /* hanoi_input_4.png */; };
 		5F6463A027461BB500428242 /* hanoi_input_4.png in Resources */ = {isa = PBXBuildFile; fileRef = 5F64639A27461BB400428242 /* hanoi_input_4.png */; };
 		5F6463A127461BB500428242 /* hanoi_input_4.png in Resources */ = {isa = PBXBuildFile; fileRef = 5F64639A27461BB400428242 /* hanoi_input_4.png */; };
@@ -391,10 +387,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5F64639327461A6D00428242 /* ImagesViewModel.swift in Sources */,
 				5FBEC8732746187F006A2A73 /* Tests_iOSLaunchTests.swift in Sources */,
 				5FBEC8712746187F006A2A73 /* Tests_iOS.swift in Sources */,
-				5F64639727461A6D00428242 /* Initialization.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,10 +396,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5F64639427461A6D00428242 /* ImagesViewModel.swift in Sources */,
 				5FBEC87F2746187F006A2A73 /* Tests_macOSLaunchTests.swift in Sources */,
 				5FBEC87D2746187F006A2A73 /* Tests_macOS.swift in Sources */,
-				5F64639827461A6D00428242 /* Initialization.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
