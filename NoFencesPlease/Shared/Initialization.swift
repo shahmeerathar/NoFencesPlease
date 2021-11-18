@@ -9,6 +9,12 @@ import Foundation
 import CoreImage
 
 class Initializer {
+    private var ciContext: CIContext
+    
+    init(ciContext: CIContext) {
+        self.ciContext = ciContext
+    }
+    
     func makeInitialGuesses(grays: [CIImage?], edges: [CIImage?]) {
 //        var initialObstructions = nil
 //        var initialBackground = nil
@@ -21,13 +27,13 @@ class Initializer {
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
-                let edgeFlow = calculateEdgeFlow()
+                let edgeFlow = calculateEdgeFlow(referenceImageGray: grays[refFrameIndex]!, comparisonImageGray: grays[index]!, referenceImageEdges: edges[refFrameIndex]!, comparisonImageEdges: edges[index]!)
                 edgeFlows[index] = edgeFlow
             }
         }
     }
     
-    private func calculateEdgeFlow() -> CIImage {
+    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, referenceImageEdges: CIImage, comparisonImageEdges: CIImage) -> CIImage {
         let edgeFlow = CIImage()
         
         return edgeFlow
