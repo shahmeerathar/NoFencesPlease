@@ -32,7 +32,7 @@ class ImagesViewModel: ObservableObject {
         removeObstruction()
     }
     
-    func removeObstruction() {
+    private func removeObstruction() {
         makeGrayscales()
         getEdgeMaps()
         makeBinaryEdgeMaps()
@@ -42,7 +42,7 @@ class ImagesViewModel: ObservableObject {
         initializer.makeInitialGuesses(grays: grayscaleImages, edges: binaryEdgeMaps)
     }
     
-    func makeGrayscales() {
+    private func makeGrayscales() {
         let grayFilter = CIFilter(name:"CIPhotoEffectMono")
         for (index, img) in images.enumerated() {
             grayFilter?.setValue(img, forKey: kCIInputImageKey)
@@ -50,7 +50,7 @@ class ImagesViewModel: ObservableObject {
         }
     }
     
-    func getEdgeMaps() {
+    private func getEdgeMaps() {
         let edgeFilter = CIFilter(name: "CIEdges")
         for (index, img) in grayscaleImages.enumerated() {
             edgeFilter?.setValue(img, forKey: kCIInputImageKey)
@@ -58,13 +58,13 @@ class ImagesViewModel: ObservableObject {
         }
     }
     
-    func makeBinaryEdgeMaps() {
+    private func makeBinaryEdgeMaps() {
         for index in 0..<self.edgeMaps.count {
             makeBinaryEdgeMap(index: index)
         }
     }
     
-    func makeBinaryEdgeMap(index: Int) {
+    private func makeBinaryEdgeMap(index: Int) {
         let rowBytes = Int(edgeMaps[index]!.extent.width)
         let dataSize = rowBytes * Int(edgeMaps[index]!.extent.height)
         let bitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
@@ -92,7 +92,7 @@ class ImagesViewModel: ObservableObject {
         binaryEdgeMaps[index] = binaryEdgeMap
     }
     
-    func setDisplayImages() {
+    private func setDisplayImages() {
         for (index, img) in binaryEdgeMaps.enumerated() {
             if let cgimg = ciContext.createCGImage(img!, from: img!.extent) {
                 display_images[index] = Image(cgimg, scale: 1.0, label: Text("Image \(index)"))
