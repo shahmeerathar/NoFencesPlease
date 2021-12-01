@@ -73,9 +73,50 @@ class Initializer {
         }
     }
     
-    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, referenceImageEdges: CIImage, comparisonImageEdges: CIImage) -> CIImage {
-        let edgeFlow = CIImage()
+    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, referenceImageEdges: CIImage, comparisonImageEdges: CIImage) -> MotionField {
+        // Edge flow = motion field from referenceImageEdges to comparisonImageEdges
+        let edgeFlow = MotionField()
+        let MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
+                                    height: Int(referenceImageGray.extent.size.height),
+                                    motionRadius: motionRadius)
+        beliefPropagation(MRF: MRF, motionField: edgeFlow)
         
         return edgeFlow
+    }
+    
+    private func calculateDataCost() {
+        // TODO: Implement NCC
+    }
+    
+    private func calculateSmoothnessCost() {
+        // TODO: Implement w12 cost
+    }
+    
+    private func beliefPropagation(MRF: MarkovRandomField, motionField: MotionField) {
+        // TODO: Implement loopy BP algorithm
+        for _ in 0..<numBeliefPropagationIterations {
+            for direction in Direction.allCases {
+                sendMessage(direction: direction)
+            }
+        }
+        
+        findBestLabelling()
+    }
+    
+    private func sendMessage(direction: Direction) {
+        switch direction {
+        case .left:
+            <#code#>
+        case .up:
+            <#code#>
+        case .right:
+            <#code#>
+        case .down:
+            <#code#>
+        }
+    }
+    
+    private func findBestLabelling() {
+        // TODO: Find best label for pixel
     }
 }
