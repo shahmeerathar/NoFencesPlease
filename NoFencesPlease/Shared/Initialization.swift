@@ -31,9 +31,13 @@ struct MRFNode {
 }
 
 struct MarkovRandomField {
+    var width: Int
+    var height: Int
     let nodes: [[MRFNode]]
     
     init(width: Int, height: Int, motionRadius: Int) {
+        self.width = width
+        self.height = height
         nodes = Array(repeating: Array(repeating: MRFNode(motionRadius: motionRadius), count: width), count: height)
     }
 }
@@ -96,14 +100,43 @@ class Initializer {
         // TODO: Implement loopy BP algorithm
         for _ in 0..<numBeliefPropagationIterations {
             for direction in Direction.allCases {
-                sendMessage(direction: direction)
+                messagePassingRound(MRF: MRF, direction: direction)
             }
         }
         
         findBestLabelling()
     }
     
-    private func sendMessage(direction: Direction) {
+    private func messagePassingRound(MRF: MarkovRandomField, direction: Direction) {
+        switch direction {
+        case .left:
+            for y in 0..<MRF.height {
+                for x in 1..<MRF.width {
+                    sendMessage(MRF: MRF, y: y, x: x, direction: .left)
+                }
+            }
+        case .up:
+            for y in 1..<MRF.height {
+                for x in 0..<MRF.width {
+                    sendMessage(MRF: MRF, y: y, x: x, direction: .up)
+                }
+            }
+        case .right:
+            for y in 0..<MRF.height {
+                for x in 0..<MRF.width - 1 {
+                    sendMessage(MRF: MRF, y: y, x: x, direction: .right)
+                }
+            }
+        case .down:
+            for y in 0..<MRF.height - 1 {
+                for x in 1..<MRF.width {
+                    sendMessage(MRF: MRF, y: y, x: x, direction: .down)
+                }
+            }
+        }
+    }
+    
+    private func sendMessage(MRF: MarkovRandomField, y: Int, x: Int, direction: Direction) {
         switch direction {
         case .left:
             <#code#>
