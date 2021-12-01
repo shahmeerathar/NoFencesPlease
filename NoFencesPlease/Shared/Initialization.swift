@@ -43,7 +43,7 @@ struct MarkovRandomField {
 }
 
 struct MotionField {
-    
+    // TODO: Implement struct
 }
 
 class Initializer {
