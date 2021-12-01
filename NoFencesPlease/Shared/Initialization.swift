@@ -112,25 +112,25 @@ class Initializer {
         case .left:
             for y in 0..<MRF.height {
                 for x in 1..<MRF.width {
-                    sendMessage(MRF: MRF, y: y, x: x, direction: .left)
+                    sendMessage(MRF: MRF, y: y, x: x, direction: direction)
                 }
             }
         case .up:
             for y in 1..<MRF.height {
                 for x in 0..<MRF.width {
-                    sendMessage(MRF: MRF, y: y, x: x, direction: .up)
+                    sendMessage(MRF: MRF, y: y, x: x, direction: direction)
                 }
             }
         case .right:
             for y in 0..<MRF.height {
                 for x in 0..<MRF.width - 1 {
-                    sendMessage(MRF: MRF, y: y, x: x, direction: .right)
+                    sendMessage(MRF: MRF, y: y, x: x, direction: direction)
                 }
             }
         case .down:
             for y in 0..<MRF.height - 1 {
                 for x in 1..<MRF.width {
-                    sendMessage(MRF: MRF, y: y, x: x, direction: .down)
+                    sendMessage(MRF: MRF, y: y, x: x, direction: direction)
                 }
             }
         }
