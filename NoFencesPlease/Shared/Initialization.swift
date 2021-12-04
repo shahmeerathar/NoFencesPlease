@@ -69,6 +69,7 @@ class Initializer {
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
+                print("Calculating edge flow for image \(index)")
                 let edgeFlow = calculateEdgeFlow(referenceImageGray: grays[refFrameIndex]!,
                                                  comparisonImageGray: grays[index]!,
                                                  referenceImageEdges: edges[refFrameIndex]!,
@@ -101,8 +102,10 @@ class Initializer {
     
     private func beliefPropagation(MRF: inout MarkovRandomField, motionField: MotionField) {
         // TODO: Implement loopy BP algorithm
-        for _ in 0..<numBeliefPropagationIterations {
+        for round in 0..<numBeliefPropagationIterations {
+            print("Initiating message passing round \(round)")
             for direction in Direction.allCases {
+                print("Sending messages \(direction)")
                 messagePassingRound(MRF: &MRF, direction: direction)
             }
         }
@@ -115,24 +118,28 @@ class Initializer {
         case .left:
             for y in 0..<MRF.height {
                 for x in 1..<MRF.width {
+                    print("Pixel: \(y), \(x)")
                     sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
                 }
             }
         case .up:
             for y in 1..<MRF.height {
                 for x in 0..<MRF.width {
+                    print("Pixel: \(y), \(x)")
                     sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
                 }
             }
         case .right:
             for y in 0..<MRF.height {
                 for x in 0..<MRF.width - 1 {
+                    print("Pixel: \(y), \(x)")
                     sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
                 }
             }
         case .down:
             for y in 0..<MRF.height - 1 {
                 for x in 1..<MRF.width {
+                    print("Pixel: \(y), \(x)")
                     sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
                 }
             }
