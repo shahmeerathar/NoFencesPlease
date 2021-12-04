@@ -16,6 +16,7 @@ class ImagesViewModel: ObservableObject {
     private var grayscaleImages: [CIImage?] = Array(repeating: nil, count: 5)
     private var edgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
     private var binaryEdgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
+    private var binaryEdgeCoordinates: [Set<[Int]>?] = Array(repeating: nil, count: 5)
     
     @Published var display_images: [Image?] = Array(repeating: nil, count: 5)
     
@@ -72,6 +73,7 @@ class ImagesViewModel: ObservableObject {
         self.ciContext.render(edgeMaps[index]!, toBitmap: bitmapPointer, rowBytes: numCols, bounds: edgeMaps[index]!.extent, format: .R8, colorSpace: nil)
         
         let binaryBitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
+        var edgePoints = Set<[Int]>()
         
         for y in 0..<numRows {
             for x in 0..<numCols {
@@ -82,6 +84,8 @@ class ImagesViewModel: ObservableObject {
                 var output: UInt8 = 0
                 if value > 0 {
                     output = 255
+                    let edgePoint = [y, x]
+                    edgePoints.insert(edgePoint)
                 }
                 
                 let binaryOffsetPointer = binaryBitmapPointer + index
@@ -94,6 +98,7 @@ class ImagesViewModel: ObservableObject {
         let binaryEdgeMap = CIImage(bitmapData: imageData, bytesPerRow: numCols, size: edgeMaps[index]!.extent.size, format: .R8, colorSpace: nil)
         
         binaryEdgeMaps[index] = binaryEdgeMap
+        binaryEdgeCoordinates[index] = edgePoints
     }
     
     private func setDisplayImages() {
