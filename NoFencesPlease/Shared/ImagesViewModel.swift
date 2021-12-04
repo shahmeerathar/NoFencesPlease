@@ -65,29 +65,33 @@ class ImagesViewModel: ObservableObject {
     }
     
     private func makeBinaryEdgeMap(index: Int) {
-        let rowBytes = Int(edgeMaps[index]!.extent.width)
-        let dataSize = rowBytes * Int(edgeMaps[index]!.extent.height)
+        let numCols = Int(edgeMaps[index]!.extent.width)
+        let numRows = Int(edgeMaps[index]!.extent.height)
+        let dataSize = numRows * numCols
         let bitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
-        self.ciContext.render(edgeMaps[index]!, toBitmap: bitmapPointer, rowBytes: rowBytes, bounds: edgeMaps[index]!.extent, format: .R8, colorSpace: nil)
+        self.ciContext.render(edgeMaps[index]!, toBitmap: bitmapPointer, rowBytes: numCols, bounds: edgeMaps[index]!.extent, format: .R8, colorSpace: nil)
         
         let binaryBitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
         
-        for index in 0..<dataSize {
-            let offsetPointer = bitmapPointer + index
-            let value = offsetPointer.load(as: UInt8.self)
-            
-            var output: UInt8 = 0
-            if value > 0 {
-                output = 255
+        for y in 0..<numRows {
+            for x in 0..<numCols {
+                let index = (y * numCols) + x
+                let offsetPointer = bitmapPointer + index
+                let value = offsetPointer.load(as: UInt8.self)
+                
+                var output: UInt8 = 0
+                if value > 0 {
+                    output = 255
+                }
+                
+                let binaryOffsetPointer = binaryBitmapPointer + index
+                binaryOffsetPointer.storeBytes(of: output, as: UInt8.self)
             }
-            
-            let binaryOffsetPointer = binaryBitmapPointer + index
-            binaryOffsetPointer.storeBytes(of: output, as: UInt8.self)
         }
         
         let imageData = Data(bytesNoCopy: binaryBitmapPointer, count: dataSize, deallocator: .none)
         
-        let binaryEdgeMap = CIImage(bitmapData: imageData, bytesPerRow: rowBytes, size: edgeMaps[index]!.extent.size, format: .R8, colorSpace: nil)
+        let binaryEdgeMap = CIImage(bitmapData: imageData, bytesPerRow: numCols, size: edgeMaps[index]!.extent.size, format: .R8, colorSpace: nil)
         
         binaryEdgeMaps[index] = binaryEdgeMap
     }
