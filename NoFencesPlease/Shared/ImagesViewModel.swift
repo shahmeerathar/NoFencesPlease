@@ -40,7 +40,7 @@ class ImagesViewModel: ObservableObject {
         setDisplayImages()
         
         let initializer = Initializer(ciContext: self.ciContext)
-        initializer.makeInitialGuesses(grays: grayscaleImages, edges: binaryEdgeMaps)
+        initializer.makeInitialGuesses(grays: grayscaleImages, edgeCoordinates: binaryEdgeCoordinates)
     }
     
     private func makeGrayscales() {

@@ -57,7 +57,7 @@ class Initializer {
         self.ciContext = ciContext
     }
     
-    func makeInitialGuesses(grays: [CIImage?], edges: [CIImage?]) {
+    func makeInitialGuesses(grays: [CIImage?], edgeCoordinates: [Set<[Int]>?]) {
 //        var initialObstructions = nil
 //        var initialBackground = nil
 //        var initialAlpha = nil
@@ -72,14 +72,14 @@ class Initializer {
                 print("Calculating edge flow for image \(index)")
                 let edgeFlow = calculateEdgeFlow(referenceImageGray: grays[refFrameIndex]!,
                                                  comparisonImageGray: grays[index]!,
-                                                 referenceImageEdges: edges[refFrameIndex]!,
-                                                 comparisonImageEdges: edges[index]!)
+                                                 referenceImageEdges: edgeCoordinates[refFrameIndex]!,
+                                                 comparisonImageEdges: edgeCoordinates[index]!)
                 edgeFlows[index] = edgeFlow
             }
         }
     }
     
-    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, referenceImageEdges: CIImage, comparisonImageEdges: CIImage) -> MotionField {
+    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, referenceImageEdges: Set<[Int]>, comparisonImageEdges: Set<[Int]>) -> MotionField {
         // Edge flow = motion field from referenceImageEdges to comparisonImageEdges
         let edgeFlow = MotionField()
         var MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
