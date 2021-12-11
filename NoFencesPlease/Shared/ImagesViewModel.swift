@@ -18,7 +18,7 @@ class ImagesViewModel: ObservableObject {
     private var binaryEdgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
     private var binaryEdgeCoordinates: [Set<[Int]>?] = Array(repeating: nil, count: 5)
     
-    let motionRadius = 15
+    let motionRadius = 7
     
     @Published var display_images: [Image?] = Array(repeating: nil, count: 5)
     
