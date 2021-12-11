@@ -18,6 +18,8 @@ class ImagesViewModel: ObservableObject {
     private var binaryEdgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
     private var binaryEdgeCoordinates: [Set<[Int]>?] = Array(repeating: nil, count: 5)
     
+    let motionRadius = 15
+    
     @Published var display_images: [Image?] = Array(repeating: nil, count: 5)
     
     func fetchImages() {
@@ -40,7 +42,7 @@ class ImagesViewModel: ObservableObject {
         makeBinaryEdgeMaps()
         setDisplayImages()
         
-        let initializer = Initializer(ciContext: self.ciContext)
+        let initializer = Initializer(ciContext: self.ciContext, motionRadius: motionRadius)
         initializer.makeInitialGuesses(grays: grayscaleImages, edgeCoordinates: binaryEdgeCoordinates)
     }
     

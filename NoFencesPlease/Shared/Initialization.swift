@@ -48,13 +48,15 @@ struct MotionField {
 
 class Initializer {
     private var ciContext: CIContext
+    private let motionRadius: Int
+    private let motionDiameter: Int
     private let patchRadius = 2
-    private let motionRadius = 15
-    private var motionDiameter: Int { (motionRadius * 2) + 1 }
     private let numBeliefPropagationIterations = 40
     
-    init(ciContext: CIContext) {
+    init(ciContext: CIContext, motionRadius: Int) {
         self.ciContext = ciContext
+        self.motionRadius = motionRadius
+        self.motionDiameter = (motionRadius * 2) + 1
     }
     
     func makeInitialGuesses(grays: [CIImage?], edgeCoordinates: [Set<[Int]>?]) {
