@@ -115,35 +115,11 @@ class Initializer {
     }
     
     private func messagePassingRound(MRF: inout MarkovRandomField, direction: Direction, edgeCoordinates: Set<[Int]>) {
-        switch direction {
-        case .left:
-            for y in 0..<MRF.height {
-                for x in 1..<MRF.width {
-                    print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
-                }
-            }
-        case .up:
-            for y in 1..<MRF.height {
-                for x in 0..<MRF.width {
-                    print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
-                }
-            }
-        case .right:
-            for y in 0..<MRF.height {
-                for x in 0..<MRF.width - 1 {
-                    print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
-                }
-            }
-        case .down:
-            for y in 0..<MRF.height - 1 {
-                for x in 1..<MRF.width {
-                    print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
-                }
-            }
+        for edgeCoordinate in edgeCoordinates {
+            let yCoord = edgeCoordinate[0]
+            let xCoord = edgeCoordinate[1]
+            // print("Coordinates: \(edgeCoordinate) (\(index + 1) of \(edgeCoordinates.count))")
+            sendMessage(MRF: &MRF, y: yCoord, x: xCoord, direction: direction, edgeCoordinates: edgeCoordinates)
         }
     }
     
