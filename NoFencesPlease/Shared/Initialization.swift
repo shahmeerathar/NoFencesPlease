@@ -72,20 +72,19 @@ class Initializer {
                 print("Calculating edge flow for image \(index)")
                 let edgeFlow = calculateEdgeFlow(referenceImageGray: grays[refFrameIndex]!,
                                                  comparisonImageGray: grays[index]!,
-                                                 referenceImageEdges: edgeCoordinates[refFrameIndex]!,
                                                  comparisonImageEdges: edgeCoordinates[index]!)
                 edgeFlows[index] = edgeFlow
             }
         }
     }
     
-    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, referenceImageEdges: Set<[Int]>, comparisonImageEdges: Set<[Int]>) -> MotionField {
+    private func calculateEdgeFlow(referenceImageGray: CIImage, comparisonImageGray: CIImage, comparisonImageEdges: Set<[Int]>) -> MotionField {
         // Edge flow = motion field from referenceImageEdges to comparisonImageEdges
         let edgeFlow = MotionField()
         var MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
                                     height: Int(referenceImageGray.extent.size.height),
                                     motionRadius: motionRadius)
-        beliefPropagation(MRF: &MRF, motionField: edgeFlow)
+        beliefPropagation(MRF: &MRF, motionField: edgeFlow, edgeCoordinates: comparisonImageEdges)
         
         return edgeFlow
     }
@@ -100,53 +99,53 @@ class Initializer {
         return 0
     }
     
-    private func beliefPropagation(MRF: inout MarkovRandomField, motionField: MotionField) {
+    private func beliefPropagation(MRF: inout MarkovRandomField, motionField: MotionField, edgeCoordinates: Set<[Int]>) {
         // TODO: Implement loopy BP algorithm
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
             for direction in Direction.allCases {
                 print("Sending messages \(direction)")
-                messagePassingRound(MRF: &MRF, direction: direction)
+                messagePassingRound(MRF: &MRF, direction: direction, edgeCoordinates: edgeCoordinates)
             }
         }
         
         findBestLabelling()
     }
     
-    private func messagePassingRound(MRF: inout MarkovRandomField, direction: Direction) {
+    private func messagePassingRound(MRF: inout MarkovRandomField, direction: Direction, edgeCoordinates: Set<[Int]>) {
         switch direction {
         case .left:
             for y in 0..<MRF.height {
                 for x in 1..<MRF.width {
                     print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
+                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
                 }
             }
         case .up:
             for y in 1..<MRF.height {
                 for x in 0..<MRF.width {
                     print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
+                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
                 }
             }
         case .right:
             for y in 0..<MRF.height {
                 for x in 0..<MRF.width - 1 {
                     print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
+                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
                 }
             }
         case .down:
             for y in 0..<MRF.height - 1 {
                 for x in 1..<MRF.width {
                     print("Pixel: \(y), \(x)")
-                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction)
+                    sendMessage(MRF: &MRF, y: y, x: x, direction: direction, edgeCoordinates: edgeCoordinates)
                 }
             }
         }
     }
     
-    private func sendMessage(MRF: inout MarkovRandomField, y: Int, x: Int, direction: Direction) {
+    private func sendMessage(MRF: inout MarkovRandomField, y: Int, x: Int, direction: Direction, edgeCoordinates: Set<[Int]>) {
         var newMessage = Array(repeating: Array(repeating: 0, count: motionDiameter), count: motionDiameter)
         
         for yLabelOuter in 0..<motionDiameter {

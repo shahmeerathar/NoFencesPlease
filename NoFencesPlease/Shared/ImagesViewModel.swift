@@ -22,6 +22,7 @@ class ImagesViewModel: ObservableObject {
     
     func fetchImages() {
         // TODO: factor out into image retrieval classes
+        print("Fetching images")
         let imgNames = ["hanoi_input_1", "hanoi_input_2", "hanoi_input_3", "hanoi_input_4", "hanoi_input_5"]
         
         for (index, imgName) in imgNames.enumerated() {
