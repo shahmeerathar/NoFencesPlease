@@ -84,11 +84,18 @@ class ImagesViewModel: ObservableObject {
                 let offsetPointer = bitmapPointer + index
                 let value = offsetPointer.load(as: UInt8.self)
                 
+                let yRange = motionRadius..<(numRows - motionRadius)
+                let xRange = motionRadius..<(numCols - motionRadius)
+                
                 var output: UInt8 = 0
                 if value > 0 {
                     output = 255
-                    let edgePoint = [y, x]
-                    edgePoints.insert(edgePoint)
+                    
+                    // Padding
+                    if yRange.contains(y) && xRange.contains(x) {
+                        let edgePoint = [y, x]
+                        edgePoints.insert(edgePoint)
+                    }
                 }
                 
                 let binaryOffsetPointer = binaryBitmapPointer + index
