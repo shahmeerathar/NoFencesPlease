@@ -26,7 +26,9 @@ struct MRFNode {
         
         observableValue = 0
         bestLabel = 0
-        messages = Array(repeating: Array(repeating: Array(repeating: 0, count: motionDiameter), count: motionDiameter), count: 4)
+        // message at index [][motionRadius][motionRadius] should be ignored because zero offset
+        // offset = directionalLabel - motionRadius
+        messages = Array(repeating: Array(repeating: Array(repeating: 0, count: motionDiameter), count: motionDiameter), count: Direction.allCases.count)
     }
 }
 
@@ -76,6 +78,12 @@ class Initializer {
             }
         }
     }
+    
+    func getLabelOffset(label: Int) -> Int {
+        return label - motionRadius
+    }
+    
+    // MARK: Functions for loopy belief propagation
     
     private func calculateDataCost() -> Int {
         // TODO: Implement NCC
