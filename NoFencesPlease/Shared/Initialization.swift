@@ -74,7 +74,8 @@ class Initializer {
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
                 print("Calculating edge flow for image \(index)")
-                edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, referenceImageGray: grays[refFrameIndex]!)
+                // These edge flows should be *from* an image to the reference image
+                edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
             }
         }
     }
@@ -85,9 +86,9 @@ class Initializer {
     
     // MARK: Functions for loopy belief propagation
     
-    private func calculateDataCost() -> Int {
+    private func calculateDataCost(image: CIImage, imageY: Int, imageX: Int, refImage: CIImage, refImageY: Int, refImageX: Int) -> Int {
         // TODO: Implement NCC
-        return 0
+        return 1
     }
     
     private func calculateSmoothnessCost() -> Int {
@@ -95,7 +96,7 @@ class Initializer {
         return 0
     }
     
-    private func beliefPropagation(edgeCoordinates: Set<[Int]>, referenceImageGray: CIImage) -> MotionField {
+    private func beliefPropagation(edgeCoordinates: Set<[Int]>, image: CIImage, referenceImageGray: CIImage) -> MotionField {
         var MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
                                     height: Int(referenceImageGray.extent.size.height),
                                     motionRadius: motionRadius)
@@ -104,27 +105,27 @@ class Initializer {
             print("Initiating message passing round \(round)")
             for direction in Direction.allCases {
                 print("Sending messages \(direction)")
-                MRF = messagePassingRound(previousMRF: MRF, direction: direction, edgeCoordinates: edgeCoordinates)
+                MRF = messagePassingRound(previousMRF: MRF, direction: direction, edgeCoordinates: edgeCoordinates, image: image, refImage: referenceImageGray)
             }
         }
         
         return findBestLabelling(MRF: MRF)
     }
     
-    private func messagePassingRound(previousMRF: MarkovRandomField, direction: Direction, edgeCoordinates: Set<[Int]>) -> MarkovRandomField {
+    private func messagePassingRound(previousMRF: MarkovRandomField, direction: Direction, edgeCoordinates: Set<[Int]>, image: CIImage, refImage: CIImage) -> MarkovRandomField {
         var newMRF = MarkovRandomField(width: previousMRF.width, height: previousMRF.height, motionRadius: motionRadius)
         
         for (index, edgeCoordinate) in edgeCoordinates.enumerated() {
             let yCoord = edgeCoordinate[0]
             let xCoord = edgeCoordinate[1]
             print("Coordinates: \(edgeCoordinate) (\(index + 1) of \(edgeCoordinates.count))")
-            sendMessage(previousMRF: previousMRF, newMRF: &newMRF, y: yCoord, x: xCoord, direction: direction, edgeCoordinates: edgeCoordinates)
+            sendMessage(previousMRF: previousMRF, newMRF: &newMRF, y: yCoord, x: xCoord, direction: direction, edgeCoordinates: edgeCoordinates, image: image, refImage: refImage)
         }
         
         return newMRF
     }
     
-    private func sendMessage(previousMRF: MarkovRandomField, newMRF: inout MarkovRandomField, y: Int, x: Int, direction: Direction, edgeCoordinates: Set<[Int]>) {
+    private func sendMessage(previousMRF: MarkovRandomField, newMRF: inout MarkovRandomField, y: Int, x: Int, direction: Direction, edgeCoordinates: Set<[Int]>, image: CIImage, refImage: CIImage) {
         var newMessage = Array(repeating: Array(repeating: 0, count: motionDiameter), count: motionDiameter)
         
         for yLabelOuter in 0..<motionDiameter {
@@ -133,7 +134,10 @@ class Initializer {
                 
                 for yLabelInner in 0..<motionDiameter {
                     for xLabelInner in 0..<motionDiameter {
-                        var cost = calculateDataCost()
+                        let yOffset = getLabelOffset(label: yLabelOuter)
+                        let xOffset = getLabelOffset(label: xLabelOuter)
+                        
+                        var cost = calculateDataCost(image: image, imageY: y, imageX: x, refImage: refImage, refImageY: y + yOffset, refImageX: x + xOffset)
                         cost += calculateSmoothnessCost()
                         let node = previousMRF.nodes[y][x]
                         
