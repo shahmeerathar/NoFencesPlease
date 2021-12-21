@@ -57,12 +57,43 @@ class Initializer {
     private let patchRadius = 2
     private let numBeliefPropagationIterations = 40
     
+    // Metal
+    private let device: MTLDevice
+    private let textureLoader: MTKTextureLoader
+    private let commandQueue: MTLCommandQueue
+    private let defaultLib: MTLLibrary
+    private let loopyBPMessagePassing: MTLFunction
+    private let loopyBPPipelineState: MTLComputePipelineState
+    
+    private var refImageTexture: MTLTexture?
+    
+    private let threadsPerGroupWidth: Int
+    private let threadsPerGroupHeight: Int
+    private let threadsPerGroup: MTLSize
+    private var threadsPerGrid: MTLSize
+    
     var output: [CIImage?] = Array(repeating: nil, count: 5)
     
     init(ciContext: CIContext, motionRadius: Int) {
         self.ciContext = ciContext
         self.motionRadius = motionRadius
         self.motionDiameter = (motionRadius * 2) + 1
+        
+        // Metal
+        // Expensive operations
+        self.device = Metal.MTLCreateSystemDefaultDevice()!
+        self.textureLoader = MTKTextureLoader(device: self.device)
+        self.commandQueue = device.makeCommandQueue()!
+        self.defaultLib = device.makeDefaultLibrary()!
+        self.loopyBPMessagePassing = defaultLib.makeFunction(name: "beliefPropagationMessagePassingRound")!
+        self.loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBPMessagePassing)
+        
+        self.refImageTexture = nil
+        
+        self.threadsPerGroupWidth = loopyBPPipelineState.threadExecutionWidth
+        self.threadsPerGroupHeight = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / self.threadsPerGroupWidth
+        self.threadsPerGroup = MTLSizeMake(self.threadsPerGroupWidth, self.threadsPerGroupHeight, 1)
+        self.threadsPerGrid = MTLSizeMake(0, 0, 0)
     }
     
     func makeInitialGuesses(grays: [CIImage?], edgeCoordinates: [Set<[Int]>?]) {
@@ -72,55 +103,18 @@ class Initializer {
 //        var obstructionMotions = nil
 //        var backgroundMotions = nil
         
-        // Metal
-        // Expensive operations
-        let device = Metal.MTLCreateSystemDefaultDevice()!
-        let commandQueue = device.makeCommandQueue()!
-        let defaultLib = device.makeDefaultLibrary()!
-        let loopyBP = defaultLib.makeFunction(name: "beliefPropagation")!
-        let loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBP)
-        
         var edgeFlows: [MotionField?] = Array(repeating: nil, count: grays.count)
+        
         let refFrameIndex = grays.count / 2
         let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
-        let textureLoader = MTKTextureLoader(device: device)
-        let refImageTexture = try! textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+        self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+        self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
                 print("Calculating edge flow for image \(index)")
                 // These edge flows should be *from* an image to the reference image
-                let image = self.ciContext.createCGImage(grays[index]!, from: grays[index]!.extent)!
-                let imageTexture = try! textureLoader.newTexture(cgImage: image, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
-                let outTexture = try! textureLoader.newTexture(cgImage: image, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderWrite.rawValue & MTLTextureUsage.shaderRead.rawValue])
-                
-                let commandBuffer = commandQueue.makeCommandBuffer()!
-                let encoder = commandBuffer.makeComputeCommandEncoder()!
-                encoder.setComputePipelineState(loopyBPPipelineState)
-                
-                encoder.setTexture(imageTexture, index: 0)
-                encoder.setTexture(refImageTexture, index: 1)
-                encoder.setTexture(outTexture, index: 2)
-                var blue = Float(index) / 4.0
-                encoder.setBytes(&blue, length: MemoryLayout.size(ofValue: blue), index: 3)
-                
-                let w = loopyBPPipelineState.threadExecutionWidth
-                let h = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / w
-                let threadsPerGroup = MTLSizeMake(w, h, 1)
-                let threadsPerGrid = MTLSizeMake(outTexture.width, outTexture.height, 1)
-                encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
-                
-                encoder.endEncoding()
-                commandBuffer.commit()
-                commandBuffer.waitUntilCompleted()
-                
-                let outputImage = CIImage(mtlTexture: outTexture, options: nil)!
-                self.output[index] = outputImage.transformed(by: outputImage.orientationTransform(for: .downMirrored))
-                
-                edgeFlows[index] = nil
-                
-                // CPU-based:
-                // edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
+                edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
             }
         }
     }
@@ -142,15 +136,40 @@ class Initializer {
     }
     
     private func beliefPropagation(edgeCoordinates: Set<[Int]>, image: CIImage, referenceImageGray: CIImage) -> MotionField {
-        var MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
+        let MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
                                     height: Int(referenceImageGray.extent.size.height),
                                     motionRadius: motionRadius)
         
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
+            
             for direction in Direction.allCases {
                 print("Sending messages \(direction)")
+                
+                let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
+                let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+                let outTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderWrite.rawValue & MTLTextureUsage.shaderRead.rawValue])
+                
+                let commandBuffer = self.commandQueue.makeCommandBuffer()!
+                let encoder = commandBuffer.makeComputeCommandEncoder()!
+                encoder.setComputePipelineState(self.loopyBPPipelineState)
+                
+                encoder.setTexture(imageTexture, index: 0)
+                encoder.setTexture(self.refImageTexture, index: 1)
+                encoder.setTexture(outTexture, index: 2)
+                
+                encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
+                
+                encoder.endEncoding()
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+                
+                let outputImage = CIImage(mtlTexture: outTexture, options: nil)!
+                self.output[0] = outputImage.transformed(by: outputImage.orientationTransform(for: .downMirrored))
+                
+                /* CPU:
                 MRF = messagePassingRound(previousMRF: MRF, direction: direction, edgeCoordinates: edgeCoordinates, image: image, refImage: referenceImageGray)
+                */
             }
         }
         
