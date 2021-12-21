@@ -9,10 +9,10 @@
 using namespace metal;
 
 kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> image [[texture(0)]],
-                              texture2d<float, access::read> refImage [[texture(1)]],
-                              texture2d<float, access::write> output [[texture(2)]],
-                              uint2 index [[thread_position_in_grid]])
+                                                 texture2d<float, access::read> refImage [[texture(1)]],
+                                                 texture2d<float, access::read> edgeMap [[texture(2)]],
+                                                 texture2d<float, access::write> output [[texture(3)]],
+                                                 uint2 index [[thread_position_in_grid]])
 {
-    float4 color = float4(0.5, 0.5, 0.5, 1.0);
-    output.write(color, index);
+    output.write(edgeMap.read(index), index);
 }

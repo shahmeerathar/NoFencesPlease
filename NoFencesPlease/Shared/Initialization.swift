@@ -96,7 +96,7 @@ class Initializer {
         self.threadsPerGrid = MTLSizeMake(0, 0, 0)
     }
     
-    func makeInitialGuesses(grays: [CIImage?], edgeCoordinates: [Set<[Int]>?]) {
+    func makeInitialGuesses(grays: [CIImage?], edgeMaps: [CIImage?]) {
 //        var initialObstructions = nil
 //        var initialBackground = nil
 //        var initialAlpha = nil
@@ -114,7 +114,7 @@ class Initializer {
             if (index != refFrameIndex) {
                 print("Calculating edge flow for image \(index)")
                 // These edge flows should be *from* an image to the reference image
-                edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
+                edgeFlows[index] = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
             }
         }
     }
@@ -135,7 +135,7 @@ class Initializer {
         return 0
     }
     
-    private func beliefPropagation(edgeCoordinates: Set<[Int]>, image: CIImage, referenceImageGray: CIImage) -> MotionField {
+    private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage) -> MotionField {
         let MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
                                     height: Int(referenceImageGray.extent.size.height),
                                     motionRadius: motionRadius)
@@ -149,6 +149,8 @@ class Initializer {
                 let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
                 let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
                 let outTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderWrite.rawValue & MTLTextureUsage.shaderRead.rawValue])
+                let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
+                let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
                 
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
@@ -156,7 +158,8 @@ class Initializer {
                 
                 encoder.setTexture(imageTexture, index: 0)
                 encoder.setTexture(self.refImageTexture, index: 1)
-                encoder.setTexture(outTexture, index: 2)
+                encoder.setTexture(edgeMapTexture, index: 2)
+                encoder.setTexture(outTexture, index: 3)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
                 
