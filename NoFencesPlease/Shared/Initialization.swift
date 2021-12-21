@@ -7,6 +7,8 @@
 
 import Foundation
 import CoreImage
+import Metal
+import MetalKit
 
 enum Direction: Int, CaseIterable {
     // Raw value defines index in messages for MRFNode
@@ -55,6 +57,8 @@ class Initializer {
     private let patchRadius = 2
     private let numBeliefPropagationIterations = 40
     
+    var output: [CIImage?] = Array(repeating: nil, count: 5)
+    
     init(ciContext: CIContext, motionRadius: Int) {
         self.ciContext = ciContext
         self.motionRadius = motionRadius
@@ -68,14 +72,55 @@ class Initializer {
 //        var obstructionMotions = nil
 //        var backgroundMotions = nil
         
+        // Metal
+        // Expensive operations
+        let device = Metal.MTLCreateSystemDefaultDevice()!
+        let commandQueue = device.makeCommandQueue()!
+        let defaultLib = device.makeDefaultLibrary()!
+        let loopyBP = defaultLib.makeFunction(name: "beliefPropagation")!
+        let loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBP)
+        
         var edgeFlows: [MotionField?] = Array(repeating: nil, count: grays.count)
         let refFrameIndex = grays.count / 2
+        let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
+        let textureLoader = MTKTextureLoader(device: device)
+        let refImageTexture = try! textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
                 print("Calculating edge flow for image \(index)")
                 // These edge flows should be *from* an image to the reference image
-                edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
+                let image = self.ciContext.createCGImage(grays[index]!, from: grays[index]!.extent)!
+                let imageTexture = try! textureLoader.newTexture(cgImage: image, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+                let outTexture = try! textureLoader.newTexture(cgImage: image, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderWrite.rawValue & MTLTextureUsage.shaderRead.rawValue])
+                
+                let commandBuffer = commandQueue.makeCommandBuffer()!
+                let encoder = commandBuffer.makeComputeCommandEncoder()!
+                encoder.setComputePipelineState(loopyBPPipelineState)
+                
+                encoder.setTexture(imageTexture, index: 0)
+                encoder.setTexture(refImageTexture, index: 1)
+                encoder.setTexture(outTexture, index: 2)
+                var blue = Float(index) / 4.0
+                encoder.setBytes(&blue, length: MemoryLayout.size(ofValue: blue), index: 3)
+                
+                let w = loopyBPPipelineState.threadExecutionWidth
+                let h = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / w
+                let threadsPerGroup = MTLSizeMake(w, h, 1)
+                let threadsPerGrid = MTLSizeMake(outTexture.width, outTexture.height, 1)
+                encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+                
+                encoder.endEncoding()
+                commandBuffer.commit()
+                commandBuffer.waitUntilCompleted()
+                
+                let outputImage = CIImage(mtlTexture: outTexture, options: nil)!
+                self.output[index] = outputImage.transformed(by: outputImage.orientationTransform(for: .downMirrored))
+                
+                edgeFlows[index] = nil
+                
+                // CPU-based:
+                // edgeFlows[index] = beliefPropagation(edgeCoordinates: edgeCoordinates[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
             }
         }
     }

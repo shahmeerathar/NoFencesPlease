@@ -16,6 +16,7 @@ class ImagesViewModel: ObservableObject {
     private var grayscaleImages: [CIImage?] = Array(repeating: nil, count: 5)
     private var edgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
     private var binaryEdgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
+    private var output: [CIImage?] = Array(repeating: nil, count: 5)
     private var binaryEdgeCoordinates: [Set<[Int]>?] = Array(repeating: nil, count: 5)
     
     let motionRadius = 7
@@ -44,6 +45,8 @@ class ImagesViewModel: ObservableObject {
         
         let initializer = Initializer(ciContext: self.ciContext, motionRadius: motionRadius)
         initializer.makeInitialGuesses(grays: grayscaleImages, edgeCoordinates: binaryEdgeCoordinates)
+        self.output = initializer.output
+        setDisplayImages()
     }
     
     private func makeGrayscales() {
@@ -112,7 +115,10 @@ class ImagesViewModel: ObservableObject {
     }
     
     private func setDisplayImages() {
-        for (index, img) in binaryEdgeMaps.enumerated() {
+        for (index, img) in output.enumerated() {
+            if img == nil {
+                continue
+            }
             if let cgimg = ciContext.createCGImage(img!, from: img!.extent) {
                 display_images[index] = Image(cgimg, scale: 1.0, label: Text("Image \(index)"))
             }
