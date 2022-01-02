@@ -68,12 +68,11 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
                     float cost = dataCost();
                     cost += smoothnessCost();
                     
-                    for (int directionCase = 0; directionCase < NUM_DIRECTIONS; directionCase++) {
-                        if (directionCase != direction) {
-                            int messageIndex = nodeIndex + (directionCase * NUM_DIRECTIONS * numMessagesPerDirection) + (yLabelInner * motionDiameter) + xLabelInner;
-                            cost += MRF[messageIndex];
-                        }
-                    }
+                    int messageNodeIndex = nodeIndex + (yLabelInner * motionDiameter * NUM_DIRECTIONS) + (xLabelInner * NUM_DIRECTIONS);
+                    float4 directionCosts = float4(MRF[messageNodeIndex], MRF[messageNodeIndex + 1], MRF[messageNodeIndex + 2], MRF[messageNodeIndex + 3]);
+                    float4 multiplier = float4(1.0);
+                    multiplier[direction] = 0.0;
+                    cost += dot(directionCosts, multiplier);
                     
                     minCost = min(cost, minCost);
                 }
@@ -81,7 +80,8 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
             
             // Pass message
             int sourceDirection = (direction + 2) % 4;
-            int messageComponentIndex = recipientPixelIndex + (sourceDirection * NUM_DIRECTIONS * numMessagesPerDirection) + (yLabelOuter * motionDiameter) + xLabelOuter;
+            // int messageComponentIndex = recipientPixelIndex + (sourceDirection * NUM_DIRECTIONS * numMessagesPerDirection) + (yLabelOuter * motionDiameter) + xLabelOuter;
+            int messageComponentIndex = recipientPixelIndex + (yLabelOuter * motionDiameter * NUM_DIRECTIONS) + (xLabelOuter * NUM_DIRECTIONS) + sourceDirection;
             newMRF[messageComponentIndex] = minCost;
         }
     }

@@ -59,7 +59,7 @@ class Initializer {
     private var imageHeight = 0 // Required for Metal kernel
     private var imageWidth = 0 // Required for Metal kernel
     // MRF goes to the Metal kernel as a flattened array of:
-    // y coordinate -> x coordinate -> direction -> message diameter y coord -> message diameter x coord
+    // y coordinate -> x coordinate -> message diameter y coord -> message diameter x coord -> direction 
     private var MRFSize = 0
     
     // Metal
