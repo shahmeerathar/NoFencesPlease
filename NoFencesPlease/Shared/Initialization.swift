@@ -149,10 +149,7 @@ class Initializer {
         
         // MRF goes to the Metal kernel as a flattened array of:
         // y coordinate -> x coordinate -> direction -> message diameter y coord -> message diameter x coord
-        var MRFSize = Int(image.extent.height) * Int(image.extent.width) * Direction.allCases.count * motionDiameter * motionDiameter
-        print(MRFSize)
-        MRFSize = Int(image.extent.height) * Int(image.extent.width)
-        print(MRFSize)
+        let MRFSize = Int(image.extent.height) * Int(image.extent.width) * Direction.allCases.count * motionDiameter * motionDiameter
         let MRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         
         for round in 0..<numBeliefPropagationIterations {
