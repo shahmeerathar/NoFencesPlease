@@ -11,8 +11,18 @@ using namespace metal;
 kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> image [[texture(0)]],
                                                  texture2d<float, access::read> refImage [[texture(1)]],
                                                  texture2d<float, access::read> edgeMap [[texture(2)]],
-                                                 texture2d<float, access::write> output [[texture(3)]],
+                                                 device float* MRF [[buffer(0)]],
+                                                 constant int& height [[buffer(1)]],
+                                                 constant int& motionDiameter [[buffer(2)]],
+                                                 constant int& direction [[buffer(3)]],
                                                  uint2 index [[thread_position_in_grid]])
 {
-    output.write(edgeMap.read(index), index);
+    if (edgeMap.read(index)[0] == 0.0) {
+        return;
+    }
+    
+    // index[1] is the y coordinate
+    // index[0] is the x coordinate
+    int idx = (index[1] * height) + index[0];
+    MRF[idx] += direction;
 }

@@ -53,9 +53,10 @@ struct MotionField {
 class Initializer {
     private var ciContext: CIContext
     private let motionRadius: Int
-    private let motionDiameter: Int
+    private var motionDiameter: Int
     private let patchRadius = 2
     private let numBeliefPropagationIterations = 40
+    private var imageHeight = 0 // Required for Metal kernel
     
     // Metal
     private let device: MTLDevice
@@ -109,6 +110,7 @@ class Initializer {
         let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
         self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
+        self.imageHeight = Int(self.refImageTexture!.height)
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
@@ -136,9 +138,22 @@ class Initializer {
     }
     
     private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage) -> MotionField {
-        let MRF = MarkovRandomField(width: Int(referenceImageGray.extent.size.width),
-                                    height: Int(referenceImageGray.extent.size.height),
-                                    motionRadius: motionRadius)
+        // Create textures to pass to Metal kernel
+        let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
+        let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage,
+                                                              options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+        
+        let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
+        let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
+                                                                options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+        
+        // MRF goes to the Metal kernel as a flattened array of:
+        // y coordinate -> x coordinate -> direction -> message diameter y coord -> message diameter x coord
+        var MRFSize = Int(image.extent.height) * Int(image.extent.width) * Direction.allCases.count * motionDiameter * motionDiameter
+        print(MRFSize)
+        MRFSize = Int(image.extent.height) * Int(image.extent.width)
+        print(MRFSize)
+        let MRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
@@ -146,12 +161,7 @@ class Initializer {
             for direction in Direction.allCases {
                 print("Sending messages \(direction)")
                 
-                let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
-                let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
-                let outTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderWrite.rawValue & MTLTextureUsage.shaderRead.rawValue])
-                let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
-                let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
-                
+                // Setting up and executing Metal kernel for message passing round
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
                 encoder.setComputePipelineState(self.loopyBPPipelineState)
@@ -159,24 +169,21 @@ class Initializer {
                 encoder.setTexture(imageTexture, index: 0)
                 encoder.setTexture(self.refImageTexture, index: 1)
                 encoder.setTexture(edgeMapTexture, index: 2)
-                encoder.setTexture(outTexture, index: 3)
+                encoder.setBuffer(MRFBuffer, offset: 0, index: 0)
+                encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int>.stride, index: 1)
+                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 2)
+                var mtlDir = Int32(direction.rawValue)
+                encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 3)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
                 
                 encoder.endEncoding()
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
-                
-                let outputImage = CIImage(mtlTexture: outTexture, options: nil)!
-                self.output[0] = outputImage.transformed(by: outputImage.orientationTransform(for: .downMirrored))
-                
-                /* CPU:
-                MRF = messagePassingRound(previousMRF: MRF, direction: direction, edgeCoordinates: edgeCoordinates, image: image, refImage: referenceImageGray)
-                */
             }
         }
         
-        return findBestLabelling(MRF: MRF)
+        return MotionField()
     }
     
     private func messagePassingRound(previousMRF: MarkovRandomField, direction: Direction, edgeCoordinates: Set<[Int]>, image: CIImage, refImage: CIImage) -> MarkovRandomField {
