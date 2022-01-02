@@ -160,6 +160,7 @@ class Initializer {
             
             for direction in Direction.allCases {
                 print("Sending messages \(direction)")
+                var mtlDir = Int32(direction.rawValue)
                 
                 // Setting up and executing Metal kernel for message passing round
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
@@ -172,7 +173,6 @@ class Initializer {
                 encoder.setBuffer(MRFBuffer, offset: 0, index: 0)
                 encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int>.stride, index: 1)
                 encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 2)
-                var mtlDir = Int32(direction.rawValue)
                 encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 3)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
