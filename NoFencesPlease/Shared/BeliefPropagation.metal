@@ -8,22 +8,100 @@
 #include <metal_stdlib>
 using namespace metal;
 
+#define NUM_DIRECTIONS 4
+
+float dataCost() {
+    return 0.0;
+}
+
+float smoothnessCost() {
+    return 0.0;
+}
+
 kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> image [[texture(0)]],
                                                  texture2d<float, access::read> refImage [[texture(1)]],
                                                  texture2d<float, access::read> edgeMap [[texture(2)]],
                                                  device float* MRF [[buffer(0)]],
                                                  device float* newMRF [[buffer(1)]],
-                                                 constant int& height [[buffer(2)]],
-                                                 constant int& motionDiameter [[buffer(3)]],
-                                                 constant int& direction [[buffer(4)]],
+                                                 constant int& imgHeight [[buffer(2)]],
+                                                 constant int& imgWidth [[buffer(3)]],
+                                                 constant int& motionDiameter [[buffer(4)]],
+                                                 constant int& direction [[buffer(5)]],
                                                  uint2 index [[thread_position_in_grid]])
 {
     if (edgeMap.read(index)[0] == 0.0) {
         return;
     }
     
+    int numMessagesPerDirection = motionDiameter * motionDiameter;
+    int numMessagesPerPixel = NUM_DIRECTIONS * numMessagesPerDirection;
+    
     // index[1] is the y coordinate
     // index[0] is the x coordinate
-    int idx = (index[1] * height) + index[0];
-    MRF[idx] += direction;
+    int pixelNum = (index[1] * imgWidth) + index[0];
+    int nodeIndex = pixelNum * numMessagesPerPixel;
+    
+    // Calculate pixel indices for recipient messages
+    int y;
+    int x;
+    switch(direction) {
+        case 0:
+            // Left
+            y = index[1];
+            x = index[0] - 1;
+            break;
+        case 1:
+            // Up
+            y = index[1] - 1;
+            x = index[0];
+            break;
+        case 2:
+            // Right
+            y = index[1];
+            x = index[0] + 1;
+            break;
+        case 3:
+            // Down
+            y = index[1] + 1;
+            x = index[0];
+            break;
+    }
+    
+    // Check if out of bounds
+    if (y < 0 || y >= imgHeight || x < 0 || x >= imgWidth) {
+        return;
+    }
+    
+    // Calculate index in MRF buffer
+    int recipientPixelIndex = ((y * imgWidth) + x) * numMessagesPerPixel;
+    
+    // Propagate beliefs!
+    for (int yLabelOuter = 0; yLabelOuter < motionDiameter; yLabelOuter++) {
+        for (int xLabelOuter = 0; xLabelOuter < motionDiameter; xLabelOuter++) {
+            float minCost = INFINITY;
+            
+            for (int yLabelInner = 0; yLabelInner < motionDiameter; yLabelInner++) {
+                for (int xLabelInner = 0; xLabelInner < motionDiameter; xLabelInner++) {
+                    // int yOffset = yLabelOuter - motionDiameter;
+                    // int xOffset = xLabelInner - motionDiameter;
+                    
+                    float cost = dataCost();
+                    cost += smoothnessCost();
+                    
+                    for (int directionCase = 0; directionCase < NUM_DIRECTIONS; directionCase++) {
+                        if (directionCase != direction) {
+                            int messageIndex = nodeIndex + (directionCase * NUM_DIRECTIONS * numMessagesPerDirection) + (yLabelInner * motionDiameter) + xLabelInner;
+                            cost += MRF[messageIndex];
+                        }
+                    }
+                    
+                    minCost = min(cost, minCost);
+                }
+            }
+            
+            // Pass message
+            int messageComponentIndex = recipientPixelIndex + (yLabelOuter * motionDiameter) + xLabelOuter;
+            newMRF[messageComponentIndex] = minCost;
+        }
+    }
 }

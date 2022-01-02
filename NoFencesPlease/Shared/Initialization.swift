@@ -55,8 +55,9 @@ class Initializer {
     private let motionRadius: Int
     private var motionDiameter: Int
     private let patchRadius = 2
-    private let numBeliefPropagationIterations = 40
+    private let numBeliefPropagationIterations = 20
     private var imageHeight = 0 // Required for Metal kernel
+    private var imageWidth = 0 // Required for Metal kernel
     // MRF goes to the Metal kernel as a flattened array of:
     // y coordinate -> x coordinate -> direction -> message diameter y coord -> message diameter x coord
     private var MRFSize = 0
@@ -113,8 +114,9 @@ class Initializer {
         let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
         self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
-        self.imageHeight = Int(self.refImageTexture!.height)
-        self.MRFSize = Int(refImage.height) * Int(refImage.width) * Direction.allCases.count * motionDiameter * motionDiameter
+        self.imageHeight = Int(refImage.height)
+        self.imageWidth = Int(refImage.width)
+        self.MRFSize = self.imageHeight * self.imageWidth * Direction.allCases.count * motionDiameter * motionDiameter
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
@@ -180,8 +182,9 @@ class Initializer {
                 encoder.setBuffer(MRFBuffer, offset: 0, index: 0)
                 encoder.setBuffer(newMRFBuffer, offset: 0, index: 1)
                 encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int>.stride, index: 2)
-                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 3)
-                encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 4)
+                encoder.setBytes(&self.imageWidth, length: MemoryLayout<Int>.stride, index: 3)
+                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 4)
+                encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 5)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
                 
