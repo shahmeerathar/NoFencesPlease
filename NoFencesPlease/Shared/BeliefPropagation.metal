@@ -45,9 +45,10 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
     // Calculate pixel indices for recipient messages
     int x = index[0] + directionOffset[0];
     int y = index[1] + directionOffset[1];
+    uint2 destination = uint2(x, y);
     
     // Check if out of bounds
-    if (y < 0 || y >= imgHeight || x < 0 || x >= imgWidth) {
+    if (y < 0 || y >= imgHeight || x < 0 || x >= imgWidth or edgeMap.read(destination)[0] == 0.0) {
         return;
     }
     
