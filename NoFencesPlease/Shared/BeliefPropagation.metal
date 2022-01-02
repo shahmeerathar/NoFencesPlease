@@ -27,6 +27,7 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
                                                  constant int& imgWidth [[buffer(3)]],
                                                  constant int& motionDiameter [[buffer(4)]],
                                                  constant int& direction [[buffer(5)]],
+                                                 constant int* directionOffset [[buffer(6)]],
                                                  uint2 index [[thread_position_in_grid]])
 {
     if (edgeMap.read(index)[0] == 0.0) {
@@ -42,30 +43,8 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
     int nodeIndex = pixelNum * numMessagesPerPixel;
     
     // Calculate pixel indices for recipient messages
-    int y;
-    int x;
-    switch(direction) {
-        case 0:
-            // Left
-            y = index[1];
-            x = index[0] - 1;
-            break;
-        case 1:
-            // Up
-            y = index[1] - 1;
-            x = index[0];
-            break;
-        case 2:
-            // Right
-            y = index[1];
-            x = index[0] + 1;
-            break;
-        case 3:
-            // Down
-            y = index[1] + 1;
-            x = index[0];
-            break;
-    }
+    int x = index[0] + directionOffset[0];
+    int y = index[1] + directionOffset[1];
     
     // Check if out of bounds
     if (y < 0 || y >= imgHeight || x < 0 || x >= imgWidth) {

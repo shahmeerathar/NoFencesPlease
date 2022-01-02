@@ -161,6 +161,12 @@ class Initializer {
         var oldBuffer = 0
         var newBuffer = 1
         
+        // Direction offsets per coordinate: [X Offset, Y Offset]
+        let DirectionOffsets = [Direction.left: [-1, 0],
+                                Direction.up: [0, -1],
+                                Direction.right: [1, 0],
+                                Direction.down: [0, 1]]
+        
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
             
@@ -168,6 +174,7 @@ class Initializer {
                 print("Sending messages \(direction)")
                 
                 var mtlDir = Int32(direction.rawValue)
+                var mtlDirOffset = DirectionOffsets[direction]!
                 let MRFBuffer = MRFBuffers[oldBuffer]
                 let newMRFBuffer = MRFBuffers[newBuffer]
                 
@@ -181,10 +188,11 @@ class Initializer {
                 encoder.setTexture(edgeMapTexture, index: 2)
                 encoder.setBuffer(MRFBuffer, offset: 0, index: 0)
                 encoder.setBuffer(newMRFBuffer, offset: 0, index: 1)
-                encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int>.stride, index: 2)
-                encoder.setBytes(&self.imageWidth, length: MemoryLayout<Int>.stride, index: 3)
-                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 4)
-                encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 5)
+                encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int32>.stride, index: 2)
+                encoder.setBytes(&self.imageWidth, length: MemoryLayout<Int32>.stride, index: 3)
+                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int32>.stride, index: 4)
+                encoder.setBytes(&mtlDir, length: MemoryLayout<Int32>.stride, index: 5)
+                encoder.setBytes(&mtlDirOffset, length: MemoryLayout<Int32>.stride * 2, index: 6)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
                 
