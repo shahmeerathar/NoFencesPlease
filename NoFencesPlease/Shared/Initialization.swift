@@ -112,7 +112,8 @@ class Initializer {
         
         let refFrameIndex = grays.count / 2
         let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
-        self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+        self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
+                                                                                               MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModeShared.rawValue])
         self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
         self.imageHeight = Int(refImage.height)
         self.imageWidth = Int(refImage.width)
@@ -147,11 +148,13 @@ class Initializer {
         // Create textures to pass to Metal kernel
         let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
         let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage,
-                                                              options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+                                                              options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
+                                                                        MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModeShared.rawValue])
         
         let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
         let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
-                                                                options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
+                                                                options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
+                                                                          MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModeShared.rawValue])
         
         let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)

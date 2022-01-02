@@ -26,6 +26,7 @@ float dataCost(uint2 index,
             uint2 refPixelIndex = uint2(refImageIndex[0] + xOffset, refImageIndex[1] + yOffset);
             uint2 imgPixelIndex = uint2(index[0] + xOffset, index[1] + yOffset);
             
+            // TODO: Sampling is super slow!
             float diff = image.read(imgPixelIndex)[0] - refImage.read(refPixelIndex)[0];
             cost += diff * diff;
         }
