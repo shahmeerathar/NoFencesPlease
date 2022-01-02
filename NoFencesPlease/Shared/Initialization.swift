@@ -57,6 +57,9 @@ class Initializer {
     private let patchRadius = 2
     private let numBeliefPropagationIterations = 40
     private var imageHeight = 0 // Required for Metal kernel
+    // MRF goes to the Metal kernel as a flattened array of:
+    // y coordinate -> x coordinate -> direction -> message diameter y coord -> message diameter x coord
+    private var MRFSize = 0
     
     // Metal
     private let device: MTLDevice
@@ -111,6 +114,7 @@ class Initializer {
         self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
         self.imageHeight = Int(self.refImageTexture!.height)
+        self.MRFSize = Int(refImage.height) * Int(refImage.width) * Direction.allCases.count * motionDiameter * motionDiameter
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
@@ -147,9 +151,6 @@ class Initializer {
         let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
                                                                 options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         
-        // MRF goes to the Metal kernel as a flattened array of:
-        // y coordinate -> x coordinate -> direction -> message diameter y coord -> message diameter x coord
-        let MRFSize = Int(image.extent.height) * Int(image.extent.width) * Direction.allCases.count * motionDiameter * motionDiameter
         let MRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         
         for round in 0..<numBeliefPropagationIterations {
