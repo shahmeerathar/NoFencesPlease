@@ -12,9 +12,10 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
                                                  texture2d<float, access::read> refImage [[texture(1)]],
                                                  texture2d<float, access::read> edgeMap [[texture(2)]],
                                                  device float* MRF [[buffer(0)]],
-                                                 constant int& height [[buffer(1)]],
-                                                 constant int& motionDiameter [[buffer(2)]],
-                                                 constant int& direction [[buffer(3)]],
+                                                 device float* newMRF [[buffer(1)]],
+                                                 constant int& height [[buffer(2)]],
+                                                 constant int& motionDiameter [[buffer(3)]],
+                                                 constant int& direction [[buffer(4)]],
                                                  uint2 index [[thread_position_in_grid]])
 {
     if (edgeMap.read(index)[0] == 0.0) {

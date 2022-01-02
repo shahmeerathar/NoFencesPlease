@@ -151,14 +151,16 @@ class Initializer {
         let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
                                                                 options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         
-        let MRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
+        var MRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
             
             for direction in Direction.allCases {
                 print("Sending messages \(direction)")
+                
                 var mtlDir = Int32(direction.rawValue)
+                let newMRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
                 
                 // Setting up and executing Metal kernel for message passing round
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
@@ -169,15 +171,19 @@ class Initializer {
                 encoder.setTexture(self.refImageTexture, index: 1)
                 encoder.setTexture(edgeMapTexture, index: 2)
                 encoder.setBuffer(MRFBuffer, offset: 0, index: 0)
-                encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int>.stride, index: 1)
-                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 2)
-                encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 3)
+                encoder.setBuffer(newMRFBuffer, offset: 0, index: 1)
+                encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int>.stride, index: 2)
+                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int>.stride, index: 3)
+                encoder.setBytes(&mtlDir, length: MemoryLayout<Int>.stride, index: 4)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
                 
                 encoder.endEncoding()
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
+                
+                // Update old MRF
+                MRFBuffer = newMRFBuffer
             }
         }
         
