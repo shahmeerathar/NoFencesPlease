@@ -79,7 +79,8 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
             }
             
             // Pass message
-            int messageComponentIndex = recipientPixelIndex + (yLabelOuter * motionDiameter) + xLabelOuter;
+            int sourceDirection = (direction + 2) % 4;
+            int messageComponentIndex = recipientPixelIndex + (sourceDirection * NUM_DIRECTIONS * numMessagesPerDirection) + (yLabelOuter * motionDiameter) + xLabelOuter;
             newMRF[messageComponentIndex] = minCost;
         }
     }
