@@ -151,7 +151,13 @@ class Initializer {
         let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
                                                                 options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue])
         
-        var MRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
+        let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
+        let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
+        
+        // We keep flip flopping every iteration between which buffer is new and old to prevent copying slowing down our algorithm
+        let MRFBuffers = [MRFBufferOne, MRFBufferTwo]
+        var oldBuffer = 0
+        var newBuffer = 1
         
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
@@ -160,7 +166,8 @@ class Initializer {
                 print("Sending messages \(direction)")
                 
                 var mtlDir = Int32(direction.rawValue)
-                let newMRFBuffer = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
+                let MRFBuffer = MRFBuffers[oldBuffer]
+                let newMRFBuffer = MRFBuffers[newBuffer]
                 
                 // Setting up and executing Metal kernel for message passing round
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
@@ -182,8 +189,9 @@ class Initializer {
                 commandBuffer.commit()
                 commandBuffer.waitUntilCompleted()
                 
-                // Update old MRF
-                MRFBuffer = newMRFBuffer
+                // Flip which buffer is new/old
+                oldBuffer = 1 - oldBuffer
+                newBuffer = 1 - newBuffer
             }
         }
         
