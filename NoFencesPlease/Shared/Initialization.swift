@@ -90,6 +90,7 @@ class Initializer {
         self.textureLoader = MTKTextureLoader(device: self.device)
         self.commandQueue = device.makeCommandQueue()!
         self.defaultLib = device.makeDefaultLibrary()!
+        
         self.loopyBPMessagePassing = defaultLib.makeFunction(name: "beliefPropagationMessagePassingRound")!
         self.loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBPMessagePassing)
         
@@ -149,12 +150,12 @@ class Initializer {
         let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
         let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage,
                                                               options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
-                                                                        MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModeShared.rawValue])
+                                                                        MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue])
         
         let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
         let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
                                                                 options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
-                                                                          MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModeShared.rawValue])
+                                                                          MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue])
         
         let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
