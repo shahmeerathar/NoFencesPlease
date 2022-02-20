@@ -10,6 +10,7 @@ using namespace metal;
 
 #define NUM_DIRECTIONS 4
 #define PATCH_RADIUS 2
+#define EPSILON 0.075
 
 float dataCost(uint2 index,
                uint2 offsets,
@@ -35,14 +36,15 @@ float dataCost(uint2 index,
     return cost;
 }
 
-float smoothnessCost() {
+float smoothnessCost(uint2 source,
+                     uint2 destination) {
     return 0.0;
 }
 
 kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> image [[texture(0)]],
                                                  texture2d<float, access::read> refImage [[texture(1)]],
                                                  texture2d<float, access::read> edgeMap [[texture(2)]],
-                                                 device float* MRF [[buffer(0)]],
+                                                 constant float* MRF [[buffer(0)]],
                                                  device float* newMRF [[buffer(1)]],
                                                  constant int& imgHeight [[buffer(2)]],
                                                  constant int& imgWidth [[buffer(3)]],
@@ -88,11 +90,14 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
                     uint2 offsets = uint2(xOffset, yOffset);
                     
                     float cost = dataCost(index, offsets, image, refImage);
-                    cost += smoothnessCost();
+                    cost += smoothnessCost(index, destination);
                     
                     int messageNodeIndex = nodeIndex + (yLabelInner * motionDiameter * NUM_DIRECTIONS) + (xLabelInner * NUM_DIRECTIONS);
-                    // TODO: These memory accesses are very inefficient
-                    float4 directionCosts = float4(MRF[messageNodeIndex], MRF[messageNodeIndex + 1], MRF[messageNodeIndex + 2], MRF[messageNodeIndex + 3]);
+                    // TODO: These memory accesses are very inefficient... try converting textures into .R8 vs .RGBA8UNORM
+                    float4 directionCosts = float4(0);
+                    for (int offset = 0; offset < NUM_DIRECTIONS; offset++) {
+                        directionCosts[offset] = MRF[messageNodeIndex + offset];
+                    }
                     float4 multiplier = float4(1.0);
                     multiplier[direction] = 0.0;
                     cost += dot(directionCosts, multiplier);
