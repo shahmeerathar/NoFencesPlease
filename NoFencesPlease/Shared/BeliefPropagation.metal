@@ -90,8 +90,8 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
                     int xOffset = xLabelInner - motionRadius;
                     uint2 offsets = uint2(xOffset, yOffset);
                     
-                    if (yOffset == 0 && xOffset == 0) {
-                        // Same pixel
+                    if ((yOffset == 0 && xOffset == 0) || edgeMap.read(index + offsets)[0] == 0.0) {
+                        // Same pixel or not an edge
                         continue;
                     }
                     
