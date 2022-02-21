@@ -70,6 +70,9 @@ class Initializer {
     private let loopyBPMessagePassing: MTLFunction
     private let loopyBPPipelineState: MTLComputePipelineState
     
+    private let textureLoaderOptions = [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue & MTLTextureUsage.pixelFormatView.rawValue,
+                                        MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue]
+    
     private var refImageTexture: MTLTexture?
     
     private let threadsPerGroupWidth: Int
@@ -113,8 +116,7 @@ class Initializer {
         
         let refFrameIndex = grays.count / 2
         let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
-        self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
-                                                                                               MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModeShared.rawValue])
+        self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: self.textureLoaderOptions)
         self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
         self.imageHeight = Int(refImage.height)
         self.imageWidth = Int(refImage.width)
@@ -148,14 +150,10 @@ class Initializer {
     private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage) -> MotionField {
         // Create textures to pass to Metal kernel
         let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
-        let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage,
-                                                              options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
-                                                                        MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue])
+        let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: textureLoaderOptions)
         
         let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
-        let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap,
-                                                                options: [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
-                                                                          MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue])
+        let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap, options: textureLoaderOptions)
         
         let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
@@ -186,6 +184,10 @@ class Initializer {
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
                 encoder.setComputePipelineState(self.loopyBPPipelineState)
+                
+                print(self.refImageTexture!.pixelFormat.rawValue)
+                print(imageTexture.pixelFormat.rawValue)
+                print(edgeMapTexture.pixelFormat.rawValue)
                 
                 encoder.setTexture(imageTexture, index: 0)
                 encoder.setTexture(self.refImageTexture, index: 1)
