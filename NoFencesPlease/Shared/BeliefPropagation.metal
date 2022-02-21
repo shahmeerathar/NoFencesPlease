@@ -57,6 +57,7 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
         return;
     }
     
+    int motionRadius = motionDiameter / 2;
     int numMessagesPerDirection = motionDiameter * motionDiameter;
     int numMessagesPerPixel = NUM_DIRECTIONS * numMessagesPerDirection;
     
@@ -85,9 +86,14 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
             
             for (int yLabelInner = 0; yLabelInner < motionDiameter; yLabelInner++) {
                 for (int xLabelInner = 0; xLabelInner < motionDiameter; xLabelInner++) {
-                    int yOffset = yLabelOuter - motionDiameter;
-                    int xOffset = xLabelInner - motionDiameter;
+                    int yOffset = yLabelInner - motionRadius;
+                    int xOffset = xLabelInner - motionRadius;
                     uint2 offsets = uint2(xOffset, yOffset);
+                    
+                    if (yOffset == 0 && xOffset == 0) {
+                        // Same pixel
+                        continue;
+                    }
                     
                     float cost = dataCost(index, offsets, image, refImage);
                     cost += smoothnessCost(index, destination);
