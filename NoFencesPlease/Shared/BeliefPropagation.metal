@@ -51,18 +51,17 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
                                                  constant int& motionDiameter [[buffer(4)]],
                                                  constant int& direction [[buffer(5)]],
                                                  constant int* directionOffset [[buffer(6)]],
-                                                 uint2 index [[thread_position_in_grid]])
+                                                 constant int* edgeCoords [[buffer(7)]],
+                                                 uint gid [[thread_position_in_grid]])
 {
-    if (edgeMap.read(index)[0] == 0.0) {
-        return;
-    }
+    uint2 index = uint2(edgeCoords[(gid * 2) + 1], edgeCoords[gid * 2]);
     
     int motionRadius = motionDiameter / 2;
     int numMessagesPerDirection = motionDiameter * motionDiameter;
     int numMessagesPerPixel = NUM_DIRECTIONS * numMessagesPerDirection;
     
-    // index[1] is the y coordinate
     // index[0] is the x coordinate
+    // index[1] is the y coordinate
     int pixelNum = (index[1] * imgWidth) + index[0];
     int nodeIndex = pixelNum * numMessagesPerPixel;
     

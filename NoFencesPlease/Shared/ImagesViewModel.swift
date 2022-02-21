@@ -45,7 +45,7 @@ class ImagesViewModel: ObservableObject {
         setDisplayImages()
         
         let initializer = Initializer(ciContext: self.ciContext, motionRadius: motionRadius)
-        initializer.makeInitialGuesses(grays: grayscaleImages, edgeMaps: self.binaryEdgeMaps)
+        initializer.makeInitialGuesses(grays: grayscaleImages, edgeMaps: self.binaryEdgeMaps, edgeCoordinates: binaryEdgeCoordinates)
         self.output = initializer.output
         setDisplayImages()
     }

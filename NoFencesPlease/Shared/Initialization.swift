@@ -77,7 +77,7 @@ class Initializer {
     
     private let threadsPerGroupWidth: Int
     private let threadsPerGroupHeight: Int
-    private let threadsPerGroup: MTLSize
+    private var threadsPerGroup: MTLSize
     private var threadsPerGrid: MTLSize
     
     var output: [CIImage?] = Array(repeating: nil, count: 5)
@@ -101,11 +101,11 @@ class Initializer {
         
         self.threadsPerGroupWidth = loopyBPPipelineState.threadExecutionWidth
         self.threadsPerGroupHeight = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / self.threadsPerGroupWidth
-        self.threadsPerGroup = MTLSizeMake(self.threadsPerGroupWidth, self.threadsPerGroupHeight, 1)
+        self.threadsPerGroup = MTLSizeMake(0, 0, 0)
         self.threadsPerGrid = MTLSizeMake(0, 0, 0)
     }
     
-    func makeInitialGuesses(grays: [CIImage?], edgeMaps: [CIImage?]) {
+    func makeInitialGuesses(grays: [CIImage?], edgeMaps: [CIImage?], edgeCoordinates: [Array<[Int]>?]) {
 //        var initialObstructions = nil
 //        var initialBackground = nil
 //        var initialAlpha = nil
@@ -117,7 +117,6 @@ class Initializer {
         let refFrameIndex = grays.count / 2
         let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
         self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: self.textureLoaderOptions)
-        self.threadsPerGrid = MTLSizeMake(self.refImageTexture!.width, self.refImageTexture!.height, 1)
         self.imageHeight = Int(refImage.height)
         self.imageWidth = Int(refImage.width)
         self.MRFSize = self.imageHeight * self.imageWidth * Direction.allCases.count * motionDiameter * motionDiameter
@@ -125,8 +124,10 @@ class Initializer {
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
                 print("Calculating edge flow for image \(index)")
+                self.threadsPerGroup = MTLSizeMake(min(loopyBPPipelineState.maxTotalThreadsPerThreadgroup, edgeCoordinates[index]!.count), 1, 1)
+                self.threadsPerGrid = MTLSizeMake(edgeCoordinates[index]!.count, 1, 1)
                 // These edge flows should be *from* an image to the reference image
-                edgeFlows[index] = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!)
+                edgeFlows[index] = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!, edgeCoordinates: edgeCoordinates[index]!)
             }
         }
     }
@@ -147,7 +148,7 @@ class Initializer {
         return 0
     }
     
-    private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage) -> MotionField {
+    private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage, edgeCoordinates: Array<[Int]>) -> MotionField {
         // Create textures to pass to Metal kernel
         let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
         let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: textureLoaderOptions)
@@ -157,6 +158,16 @@ class Initializer {
         
         let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
+        
+        let edgeCoordByteCount = MemoryLayout<Int>.stride * 2 * edgeCoordinates.count
+        let edgeCoordPtr = UnsafeMutableRawPointer.allocate(byteCount: edgeCoordByteCount, alignment: MemoryLayout<Int>.alignment)
+        for (index, element) in edgeCoordinates.enumerated() {
+            var offsetPtr = edgeCoordPtr.advanced(by: 2 * MemoryLayout<Int>.stride * index)
+            offsetPtr.storeBytes(of: element[0], as: Int.self)
+            offsetPtr = offsetPtr.advanced(by: MemoryLayout<Int>.stride)
+            offsetPtr.storeBytes(of: element[1], as: Int.self)
+        }
+        let edgeCoordBuffer = device.makeBuffer(bytes: edgeCoordPtr, length: edgeCoordByteCount, options: .storageModeShared)
         
         // We keep flip flopping every iteration between which buffer is new and old to prevent copying slowing down our algorithm
         let MRFBuffers = [MRFBufferOne, MRFBufferTwo]
@@ -195,6 +206,7 @@ class Initializer {
                 encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int32>.stride, index: 4)
                 encoder.setBytes(&mtlDir, length: MemoryLayout<Int32>.stride, index: 5)
                 encoder.setBytes(&mtlDirOffset, length: MemoryLayout<Int32>.stride * 2, index: 6)
+                encoder.setBuffer(edgeCoordBuffer, offset: 0, index: 7)
                 
                 encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
                 
