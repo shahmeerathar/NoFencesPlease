@@ -17,7 +17,8 @@ class ImagesViewModel: ObservableObject {
     private var edgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
     private var binaryEdgeMaps: [CIImage?] = Array(repeating: nil, count: 5)
     private var output: [CIImage?] = Array(repeating: nil, count: 5)
-    private var binaryEdgeCoordinates: [Set<[Int]>?] = Array(repeating: nil, count: 5)
+    private var binaryEdgeCoordinates: [Array<[Int]>?] = Array(repeating: nil, count: 5)
+    private var binaryEdgeCoordinatesSet: [Set<[Int]>?] = Array(repeating: nil, count: 5)
     
     let motionRadius = 7
     
@@ -79,7 +80,8 @@ class ImagesViewModel: ObservableObject {
         self.ciContext.render(edgeMaps[index]!, toBitmap: bitmapPointer, rowBytes: numCols, bounds: edgeMaps[index]!.extent, format: .R8, colorSpace: nil)
         
         let binaryBitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
-        var edgePoints = Set<[Int]>()
+        var edgePoints = Array<[Int]>()
+        var edgePointsSet = Set<[Int]>()
         
         for y in 0..<numRows {
             for x in 0..<numCols {
@@ -97,7 +99,8 @@ class ImagesViewModel: ObservableObject {
                     // Padding
                     if yRange.contains(y) && xRange.contains(x) {
                         let edgePoint = [y, x]
-                        edgePoints.insert(edgePoint)
+                        edgePoints.append(edgePoint)
+                        edgePointsSet.insert(edgePoint)
                     }
                 }
                 
@@ -112,6 +115,7 @@ class ImagesViewModel: ObservableObject {
         
         binaryEdgeMaps[index] = binaryEdgeMap
         binaryEdgeCoordinates[index] = edgePoints
+        binaryEdgeCoordinatesSet[index] = edgePointsSet
     }
     
     private func setDisplayImages() {
