@@ -70,7 +70,7 @@ class Initializer {
     private let loopyBPMessagePassing: MTLFunction
     private let loopyBPPipelineState: MTLComputePipelineState
     
-    private let textureLoaderOptions = [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue & MTLTextureUsage.pixelFormatView.rawValue,
+    private let textureLoaderOptions = [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
                                         MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue]
     
     private var refImageTexture: MTLTexture?
@@ -184,10 +184,6 @@ class Initializer {
                 let commandBuffer = self.commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
                 encoder.setComputePipelineState(self.loopyBPPipelineState)
-                
-                print(self.refImageTexture!.pixelFormat.rawValue)
-                print(imageTexture.pixelFormat.rawValue)
-                print(edgeMapTexture.pixelFormat.rawValue)
                 
                 encoder.setTexture(imageTexture, index: 0)
                 encoder.setTexture(self.refImageTexture, index: 1)
