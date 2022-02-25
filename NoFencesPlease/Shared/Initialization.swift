@@ -135,18 +135,6 @@ class Initializer {
         return label - motionRadius
     }
     
-    // MARK: Functions for loopy belief propagation
-    
-    private func calculateDataCost(image: CIImage, imageY: Int, imageX: Int, refImage: CIImage, refImageY: Int, refImageX: Int) -> Int {
-        // TODO: Implement NCC
-        return 1
-    }
-    
-    private func calculateSmoothnessCost() -> Int {
-        // TODO: Implement w12 cost
-        return 0
-    }
-    
     private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage, edgeCoordinates: Array<[Int]>) -> MotionField {
         // Create textures to pass to Metal kernel
         let cgImage = ciContext.createCGImage(image, from: image.extent)!
@@ -222,6 +210,23 @@ class Initializer {
         return MotionField()
     }
     
+    private func findBestLabelling(MRF: MarkovRandomField) -> MotionField {
+        // TODO: Find best label for pixel
+        return MotionField()
+    }
+    
+    // MARK: Functions for CPU-based loopy belief propagation - not currently used
+    
+    private func calculateDataCost(image: CIImage, imageY: Int, imageX: Int, refImage: CIImage, refImageY: Int, refImageX: Int) -> Int {
+        // TODO: Implement NCC
+        return 1
+    }
+    
+    private func calculateSmoothnessCost() -> Int {
+        // TODO: Implement w12 cost
+        return 0
+    }
+    
     private func messagePassingRound(previousMRF: MarkovRandomField, direction: Direction, edgeCoordinates: Set<[Int]>, image: CIImage, refImage: CIImage) -> MarkovRandomField {
         var newMRF = MarkovRandomField(width: previousMRF.width, height: previousMRF.height, motionRadius: motionRadius)
         
@@ -275,10 +280,5 @@ class Initializer {
         case .down:
             newMRF.nodes[y + 1][x].messages[Direction.up.rawValue] = newMessage
         }
-    }
-    
-    private func findBestLabelling(MRF: MarkovRandomField) -> MotionField {
-        // TODO: Find best label for pixel
-        return MotionField()
     }
 }
