@@ -40,11 +40,10 @@ class ImagesViewModel: ObservableObject {
         makeGrayscales()
         getEdgeMaps()
         makeBinaryEdgeMaps()
-        setDisplayImages()
         
-        let initializer = Initializer(ciContext: self.ciContext, motionRadius: motionRadius)
-        initializer.makeInitialGuesses(grays: grayscaleImages, edgeMaps: self.binaryEdgeMaps, edgeCoordinates: binaryEdgeCoordinates)
-        self.output = initializer.output
+        let initializer = Initializer(ciContext: ciContext, motionRadius: motionRadius)
+        output = initializer.makeInitialGuesses(grays: grayscaleImages, edgeMaps: binaryEdgeMaps, edgeCoordinates: binaryEdgeCoordinates)
+        
         setDisplayImages()
     }
     
@@ -65,7 +64,7 @@ class ImagesViewModel: ObservableObject {
     }
     
     private func makeBinaryEdgeMaps() {
-        for index in 0..<self.edgeMaps.count {
+        for index in 0..<edgeMaps.count {
             makeBinaryEdgeMap(index: index)
         }
     }
@@ -73,11 +72,12 @@ class ImagesViewModel: ObservableObject {
     private func makeBinaryEdgeMap(index: Int) {
         let numCols = Int(edgeMaps[index]!.extent.width)
         let numRows = Int(edgeMaps[index]!.extent.height)
-        let dataSize = numRows * numCols
-        let bitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
+        let numPixels = numRows * numCols
+        
+        let bitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: numPixels, alignment: 1)
         self.ciContext.render(edgeMaps[index]!, toBitmap: bitmapPointer, rowBytes: numCols, bounds: edgeMaps[index]!.extent, format: .R8, colorSpace: nil)
         
-        let binaryBitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: dataSize, alignment: 1)
+        let binaryBitmapPointer = UnsafeMutableRawPointer.allocate(byteCount: numPixels, alignment: 1)
         var edgePoints = Array<[Int]>()
         var edgePointsSet = Set<[Int]>()
         
@@ -107,7 +107,7 @@ class ImagesViewModel: ObservableObject {
             }
         }
         
-        let imageData = Data(bytesNoCopy: binaryBitmapPointer, count: dataSize, deallocator: .none)
+        let imageData = Data(bytesNoCopy: binaryBitmapPointer, count: numPixels, deallocator: .none)
         
         let binaryEdgeMap = CIImage(bitmapData: imageData, bytesPerRow: numCols, size: edgeMaps[index]!.extent.size, format: .R8, colorSpace: nil)
         

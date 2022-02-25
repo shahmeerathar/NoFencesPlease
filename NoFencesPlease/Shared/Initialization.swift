@@ -105,7 +105,7 @@ class Initializer {
         self.threadsPerGrid = MTLSizeMake(0, 0, 0)
     }
     
-    func makeInitialGuesses(grays: [CIImage?], edgeMaps: [CIImage?], edgeCoordinates: [Array<[Int]>?]) {
+    func makeInitialGuesses(grays: [CIImage?], edgeMaps: [CIImage?], edgeCoordinates: [Array<[Int]>?]) -> [CIImage?] {
 //        var initialObstructions = nil
 //        var initialBackground = nil
 //        var initialAlpha = nil
@@ -130,6 +130,8 @@ class Initializer {
                 edgeFlows[index] = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!, edgeCoordinates: edgeCoordinates[index]!)
             }
         }
+        
+        return output
     }
     
     func getLabelOffset(label: Int) -> Int {
