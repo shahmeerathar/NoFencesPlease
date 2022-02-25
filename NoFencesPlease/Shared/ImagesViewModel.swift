@@ -34,11 +34,9 @@ class ImagesViewModel: ObservableObject {
             let img = CIImage(contentsOf: imgURL!)
             images[index] = img
         }
-        
-        removeObstruction()
     }
     
-    private func removeObstruction() {
+    func removeObstruction() {
         makeGrayscales()
         getEdgeMaps()
         makeBinaryEdgeMaps()

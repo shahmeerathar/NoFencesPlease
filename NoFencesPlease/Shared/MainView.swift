@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct ContentView: View {
+struct MainView: View {
     @StateObject private var model = ImagesViewModel()
     
     var body: some View {
@@ -22,7 +22,10 @@ struct ContentView: View {
             }
             
         }
-        .onAppear(perform: model.fetchImages)
+        .onAppear {
+            model.fetchImages()
+            model.removeObstruction()
+        }
     }
 }
 
@@ -40,6 +43,6 @@ struct ImageView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        MainView()
     }
 }

@@ -39,8 +39,8 @@
 		5FBEC87F2746187F006A2A73 /* Tests_macOSLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC87E2746187F006A2A73 /* Tests_macOSLaunchTests.swift */; };
 		5FBEC8802746187F006A2A73 /* NoFencesPleaseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC8582746187E006A2A73 /* NoFencesPleaseApp.swift */; };
 		5FBEC8812746187F006A2A73 /* NoFencesPleaseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC8582746187E006A2A73 /* NoFencesPleaseApp.swift */; };
-		5FBEC8822746187F006A2A73 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC8592746187E006A2A73 /* ContentView.swift */; };
-		5FBEC8832746187F006A2A73 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC8592746187E006A2A73 /* ContentView.swift */; };
+		5FBEC8822746187F006A2A73 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC8592746187E006A2A73 /* MainView.swift */; };
+		5FBEC8832746187F006A2A73 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FBEC8592746187E006A2A73 /* MainView.swift */; };
 		5FBEC8842746187F006A2A73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5FBEC85A2746187F006A2A73 /* Assets.xcassets */; };
 		5FBEC8852746187F006A2A73 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5FBEC85A2746187F006A2A73 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
@@ -72,7 +72,7 @@
 		5F64639D27461BB500428242 /* hanoi_input_5.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hanoi_input_5.png; sourceTree = "<group>"; };
 		5F64639E27461BB500428242 /* hanoi_input_1.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = hanoi_input_1.png; sourceTree = "<group>"; };
 		5FBEC8582746187E006A2A73 /* NoFencesPleaseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoFencesPleaseApp.swift; sourceTree = "<group>"; };
-		5FBEC8592746187E006A2A73 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5FBEC8592746187E006A2A73 /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		5FBEC85A2746187F006A2A73 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5FBEC85F2746187F006A2A73 /* NoFencesPlease.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoFencesPlease.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FBEC8652746187F006A2A73 /* NoFencesPlease.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NoFencesPlease.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -145,7 +145,7 @@
 			children = (
 				5F64639927461B9600428242 /* Sample Images */,
 				5FBEC8582746187E006A2A73 /* NoFencesPleaseApp.swift */,
-				5FBEC8592746187E006A2A73 /* ContentView.swift */,
+				5FBEC8592746187E006A2A73 /* MainView.swift */,
 				5F64638F27461A6D00428242 /* ImagesViewModel.swift */,
 				5F64639027461A6D00428242 /* Initialization.swift */,
 				5FBEC85A2746187F006A2A73 /* Assets.xcassets */,
@@ -371,7 +371,7 @@
 			files = (
 				5F16227C276EF7C3003B1109 /* BeliefPropagation.metal in Sources */,
 				5F64639127461A6D00428242 /* ImagesViewModel.swift in Sources */,
-				5FBEC8822746187F006A2A73 /* ContentView.swift in Sources */,
+				5FBEC8822746187F006A2A73 /* MainView.swift in Sources */,
 				5FBEC8802746187F006A2A73 /* NoFencesPleaseApp.swift in Sources */,
 				5F64639527461A6D00428242 /* Initialization.swift in Sources */,
 			);
@@ -383,7 +383,7 @@
 			files = (
 				5F16227D276EF7C3003B1109 /* BeliefPropagation.metal in Sources */,
 				5F64639227461A6D00428242 /* ImagesViewModel.swift in Sources */,
-				5FBEC8832746187F006A2A73 /* ContentView.swift in Sources */,
+				5FBEC8832746187F006A2A73 /* MainView.swift in Sources */,
 				5FBEC8812746187F006A2A73 /* NoFencesPleaseApp.swift in Sources */,
 				5F64639627461A6D00428242 /* Initialization.swift in Sources */,
 			);
