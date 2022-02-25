@@ -51,11 +51,13 @@ struct MotionField {
 }
 
 class Initializer {
-    private var ciContext: CIContext
+    private let ciContext: CIContext
+    
     private let motionRadius: Int
     private var motionDiameter: Int
     private let patchRadius = 2
     private let numBeliefPropagationIterations = 20
+    
     private var imageHeight = 0 // Required for Metal kernel
     private var imageWidth = 0 // Required for Metal kernel
     // MRF goes to the Metal kernel as a flattened array of:
@@ -73,36 +75,31 @@ class Initializer {
     private let textureLoaderOptions = [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
                                         MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue]
     
-    private var refImageTexture: MTLTexture?
+    private var refImageTexture: MTLTexture? = nil
     
     private let threadsPerGroupWidth: Int
     private let threadsPerGroupHeight: Int
-    private var threadsPerGroup: MTLSize
-    private var threadsPerGrid: MTLSize
+    private var threadsPerGroup = MTLSizeMake(0, 0, 0)
+    private var threadsPerGrid = MTLSizeMake(0, 0, 0)
     
     var output: [CIImage?] = Array(repeating: nil, count: 5)
     
     init(ciContext: CIContext, motionRadius: Int) {
         self.ciContext = ciContext
         self.motionRadius = motionRadius
-        self.motionDiameter = (motionRadius * 2) + 1
+        motionDiameter = (motionRadius * 2) + 1
         
-        // Metal
-        // Expensive operations
-        self.device = Metal.MTLCreateSystemDefaultDevice()!
-        self.textureLoader = MTKTextureLoader(device: self.device)
-        self.commandQueue = device.makeCommandQueue()!
-        self.defaultLib = device.makeDefaultLibrary()!
+        // Metal: expensive operations
+        device = Metal.MTLCreateSystemDefaultDevice()!
+        textureLoader = MTKTextureLoader(device: device)
+        commandQueue = device.makeCommandQueue()!
+        defaultLib = device.makeDefaultLibrary()!
         
-        self.loopyBPMessagePassing = defaultLib.makeFunction(name: "beliefPropagationMessagePassingRound")!
-        self.loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBPMessagePassing)
+        loopyBPMessagePassing = defaultLib.makeFunction(name: "beliefPropagationMessagePassingRound")!
+        loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBPMessagePassing)
         
-        self.refImageTexture = nil
-        
-        self.threadsPerGroupWidth = loopyBPPipelineState.threadExecutionWidth
-        self.threadsPerGroupHeight = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / self.threadsPerGroupWidth
-        self.threadsPerGroup = MTLSizeMake(0, 0, 0)
-        self.threadsPerGrid = MTLSizeMake(0, 0, 0)
+        threadsPerGroupWidth = loopyBPPipelineState.threadExecutionWidth
+        threadsPerGroupHeight = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / threadsPerGroupWidth
     }
     
     func makeInitialGuesses(grays: [CIImage?], edgeMaps: [CIImage?], edgeCoordinates: [Array<[Int]>?]) -> [CIImage?] {
@@ -115,17 +112,17 @@ class Initializer {
         var edgeFlows: [MotionField?] = Array(repeating: nil, count: grays.count)
         
         let refFrameIndex = grays.count / 2
-        let refImage = self.ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
-        self.refImageTexture = try! self.textureLoader.newTexture(cgImage: refImage, options: self.textureLoaderOptions)
-        self.imageHeight = Int(refImage.height)
-        self.imageWidth = Int(refImage.width)
-        self.MRFSize = self.imageHeight * self.imageWidth * Direction.allCases.count * motionDiameter * motionDiameter
+        let refImage = ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
+        refImageTexture = try! textureLoader.newTexture(cgImage: refImage, options: textureLoaderOptions)
+        imageHeight = Int(refImage.height)
+        imageWidth = Int(refImage.width)
+        MRFSize = imageHeight * imageWidth * Direction.allCases.count * motionDiameter * motionDiameter
         
         for index in 0..<grays.count {
             if (index != refFrameIndex) {
                 print("Calculating edge flow for image \(index)")
-                self.threadsPerGroup = MTLSizeMake(min(loopyBPPipelineState.maxTotalThreadsPerThreadgroup, edgeCoordinates[index]!.count), 1, 1)
-                self.threadsPerGrid = MTLSizeMake(edgeCoordinates[index]!.count, 1, 1)
+                threadsPerGroup = MTLSizeMake(min(loopyBPPipelineState.maxTotalThreadsPerThreadgroup, edgeCoordinates[index]!.count), 1, 1)
+                threadsPerGrid = MTLSizeMake(edgeCoordinates[index]!.count, 1, 1)
                 // These edge flows should be *from* an image to the reference image
                 edgeFlows[index] = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!, edgeCoordinates: edgeCoordinates[index]!)
             }
@@ -152,11 +149,11 @@ class Initializer {
     
     private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage, edgeCoordinates: Array<[Int]>) -> MotionField {
         // Create textures to pass to Metal kernel
-        let cgImage = self.ciContext.createCGImage(image, from: image.extent)!
-        let imageTexture = try! self.textureLoader.newTexture(cgImage: cgImage, options: textureLoaderOptions)
+        let cgImage = ciContext.createCGImage(image, from: image.extent)!
+        let imageTexture = try! textureLoader.newTexture(cgImage: cgImage, options: textureLoaderOptions)
         
-        let cgEdgeMap = self.ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
-        let edgeMapTexture = try! self.textureLoader.newTexture(cgImage: cgEdgeMap, options: textureLoaderOptions)
+        let cgEdgeMap = ciContext.createCGImage(edgeMap, from: edgeMap.extent)!
+        let edgeMapTexture = try! textureLoader.newTexture(cgImage: cgEdgeMap, options: textureLoaderOptions)
         
         let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
@@ -194,23 +191,23 @@ class Initializer {
                 let newMRFBuffer = MRFBuffers[newBuffer]
                 
                 // Setting up and executing Metal kernel for message passing round
-                let commandBuffer = self.commandQueue.makeCommandBuffer()!
+                let commandBuffer = commandQueue.makeCommandBuffer()!
                 let encoder = commandBuffer.makeComputeCommandEncoder()!
-                encoder.setComputePipelineState(self.loopyBPPipelineState)
+                encoder.setComputePipelineState(loopyBPPipelineState)
                 
                 encoder.setTexture(imageTexture, index: 0)
-                encoder.setTexture(self.refImageTexture, index: 1)
+                encoder.setTexture(refImageTexture, index: 1)
                 encoder.setTexture(edgeMapTexture, index: 2)
                 encoder.setBuffer(MRFBuffer, offset: 0, index: 0)
                 encoder.setBuffer(newMRFBuffer, offset: 0, index: 1)
-                encoder.setBytes(&self.imageHeight, length: MemoryLayout<Int32>.stride, index: 2)
-                encoder.setBytes(&self.imageWidth, length: MemoryLayout<Int32>.stride, index: 3)
-                encoder.setBytes(&self.motionDiameter, length: MemoryLayout<Int32>.stride, index: 4)
+                encoder.setBytes(&imageHeight, length: MemoryLayout<Int32>.stride, index: 2)
+                encoder.setBytes(&imageWidth, length: MemoryLayout<Int32>.stride, index: 3)
+                encoder.setBytes(&motionDiameter, length: MemoryLayout<Int32>.stride, index: 4)
                 encoder.setBytes(&mtlDir, length: MemoryLayout<Int32>.stride, index: 5)
                 encoder.setBytes(&mtlDirOffset, length: MemoryLayout<Int32>.stride * 2, index: 6)
                 encoder.setBuffer(edgeCoordBuffer, offset: 0, index: 7)
                 
-                encoder.dispatchThreads(self.threadsPerGrid, threadsPerThreadgroup: self.threadsPerGroup)
+                encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
                 
                 encoder.endEncoding()
                 commandBuffer.commit()
