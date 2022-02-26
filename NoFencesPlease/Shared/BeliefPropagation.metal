@@ -17,15 +17,16 @@ float dataCost(uint2 index,
                texture2d<float, access::read> image,
                texture2d<float, access::read> refImage) {
     float cost = 0.0;
-    uint2 refImageIndex = uint2(index[0] + offsets[0], index[1] + offsets[1]);
+    uint2 refImageIndex = index + offsets;
     
     // Currently implemented as SSD; TODO: implement NCC
     for (int yOffset = -1 * PATCH_RADIUS; yOffset < PATCH_RADIUS + 1; yOffset++)
     {
         for (int xOffset = -1 * PATCH_RADIUS; xOffset < PATCH_RADIUS + 1; xOffset++)
         {
-            uint2 refPixelIndex = uint2(refImageIndex[0] + xOffset, refImageIndex[1] + yOffset);
-            uint2 imgPixelIndex = uint2(index[0] + xOffset, index[1] + yOffset);
+            uint2 innerOffsets = uint2(xOffset, yOffset);
+            uint2 refPixelIndex = refImageIndex + innerOffsets;
+            uint2 imgPixelIndex = index + innerOffsets;
             
             // TODO: Sampling is super slow!
             float diff = image.read(imgPixelIndex)[0] - refImage.read(refPixelIndex)[0];
@@ -113,7 +114,6 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
             
             // Pass message
             int sourceDirection = (direction + 2) % 4;
-            // int messageComponentIndex = recipientPixelIndex + (sourceDirection * NUM_DIRECTIONS * numMessagesPerDirection) + (yLabelOuter * motionDiameter) + xLabelOuter;
             int messageComponentIndex = recipientPixelIndex + (yLabelOuter * motionDiameter * NUM_DIRECTIONS) + (xLabelOuter * NUM_DIRECTIONS) + sourceDirection;
             newMRF[messageComponentIndex] = minCost;
         }
