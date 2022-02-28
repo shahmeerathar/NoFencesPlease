@@ -150,13 +150,13 @@ class Initializer {
         let MRFBufferOne = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         let MRFBufferTwo = device.makeBuffer(length: MemoryLayout<Float>.stride * MRFSize, options: MTLResourceOptions.storageModeShared)
         
-        let edgeCoordByteCount = MemoryLayout<Int>.stride * 2 * edgeCoordinates.count
-        let edgeCoordPtr = UnsafeMutableRawPointer.allocate(byteCount: edgeCoordByteCount, alignment: MemoryLayout<Int>.alignment)
+        let edgeCoordByteCount = MemoryLayout<Int32>.stride * 2 * edgeCoordinates.count
+        let edgeCoordPtr = UnsafeMutableRawPointer.allocate(byteCount: edgeCoordByteCount, alignment: MemoryLayout<Int32>.alignment)
         for (index, element) in edgeCoordinates.enumerated() {
-            var offsetPtr = edgeCoordPtr.advanced(by: 2 * MemoryLayout<Int>.stride * index)
-            offsetPtr.storeBytes(of: element[0], as: Int.self)
-            offsetPtr = offsetPtr.advanced(by: MemoryLayout<Int>.stride)
-            offsetPtr.storeBytes(of: element[1], as: Int.self)
+            var offsetPtr = edgeCoordPtr.advanced(by: 2 * MemoryLayout<Int32>.stride * index)
+            offsetPtr.storeBytes(of: Int32(element[0]), as: Int32.self)
+            offsetPtr = offsetPtr.advanced(by: MemoryLayout<Int32>.stride)
+            offsetPtr.storeBytes(of: Int32(element[1]), as: Int32.self)
         }
         let edgeCoordBuffer = device.makeBuffer(bytes: edgeCoordPtr, length: edgeCoordByteCount, options: .storageModeShared)
         
