@@ -119,3 +119,43 @@ kernel void beliefPropagationMessagePassingRound(texture2d<float, access::read> 
         }
     }
 }
+
+kernel void getBeliefs(texture2d<float, access::write> edgeFlow [[texture(0)]],
+                       constant float* MRF [[buffer(0)]],
+                       constant int& motionDiameter [[buffer(1)]],
+                       constant int& imgWidth [[buffer(2)]],
+                       uint2 gid [[thread_position_in_grid]]) {
+    int xDim = gid[0];
+    int yDim = gid[1];
+    
+    int numMessagesPerPixel = motionDiameter * motionDiameter * NUM_DIRECTIONS;
+    int MRFIndex = (yDim * imgWidth * numMessagesPerPixel) + (xDim * numMessagesPerPixel);
+    
+    int samePixelIndex = ((motionDiameter * motionDiameter) + 1) / 2;
+    int minCost = INFINITY;
+    int minCostLabel = 0;
+    
+    for (int label = 0; label < motionDiameter * motionDiameter; label++) {
+        int labelIndex = label * NUM_DIRECTIONS;
+        
+        if (labelIndex == samePixelIndex) { continue; }
+        
+        int cost = 0;
+        for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
+            cost += MRF[MRFIndex + labelIndex + direction];
+        }
+        
+        if (cost < minCost) {
+            minCost = cost;
+            minCostLabel = label;
+        }
+    }
+    
+    int yLabel = minCostLabel / motionDiameter;
+    int xLabel = minCostLabel % motionDiameter;
+    
+    float rVal = (float) yLabel / (float) motionDiameter;
+    float bVal = (float) xLabel / (float) motionDiameter;
+    float4 colour = float4(rVal, 0.0, bVal, 1.0);
+    edgeFlow.write(colour, gid);
+}

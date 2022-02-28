@@ -46,10 +46,6 @@ struct MarkovRandomField {
     }
 }
 
-struct MotionField {
-    // TODO: Implement struct
-}
-
 class Initializer {
     private let ciContext: CIContext
     
@@ -71,6 +67,8 @@ class Initializer {
     private let defaultLib: MTLLibrary
     private let loopyBPMessagePassing: MTLFunction
     private let loopyBPPipelineState: MTLComputePipelineState
+    private let getBeliefs: MTLFunction
+    private let getBeliefsPipelineState: MTLComputePipelineState
     
     private let textureLoaderOptions = [MTKTextureLoader.Option.textureUsage: MTLTextureUsage.shaderRead.rawValue,
                                         MTKTextureLoader.Option.textureStorageMode: MTLResourceOptions.storageModePrivate.rawValue]
@@ -97,6 +95,8 @@ class Initializer {
         
         loopyBPMessagePassing = defaultLib.makeFunction(name: "beliefPropagationMessagePassingRound")!
         loopyBPPipelineState = try! device.makeComputePipelineState(function: loopyBPMessagePassing)
+        getBeliefs = defaultLib.makeFunction(name: "getBeliefs")!
+        getBeliefsPipelineState = try! device.makeComputePipelineState(function: getBeliefs)
         
         threadsPerGroupWidth = loopyBPPipelineState.threadExecutionWidth
         threadsPerGroupHeight = loopyBPPipelineState.maxTotalThreadsPerThreadgroup / threadsPerGroupWidth
@@ -109,7 +109,7 @@ class Initializer {
 //        var obstructionMotions = nil
 //        var backgroundMotions = nil
         
-        var edgeFlows: [MotionField?] = Array(repeating: nil, count: grays.count)
+        var edgeFlows: [MTLTexture?] = Array(repeating: nil, count: grays.count)
         
         let refFrameIndex = grays.count / 2
         let refImage = ciContext.createCGImage(grays[refFrameIndex]!, from: grays[refFrameIndex]!.extent)!
@@ -124,7 +124,10 @@ class Initializer {
                 threadsPerGroup = MTLSizeMake(min(loopyBPPipelineState.maxTotalThreadsPerThreadgroup, edgeCoordinates[index]!.count), 1, 1)
                 threadsPerGrid = MTLSizeMake(edgeCoordinates[index]!.count, 1, 1)
                 // These edge flows should be *from* an image to the reference image
-                edgeFlows[index] = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!, edgeCoordinates: edgeCoordinates[index]!)
+                let edgeFlowTexture = beliefPropagation(edgeMap: edgeMaps[index]!, image: grays[index]!, referenceImageGray: grays[refFrameIndex]!, edgeCoordinates: edgeCoordinates[index]!)
+                let edgeFlowImage = CIImage(mtlTexture: edgeFlowTexture, options: nil)
+                edgeFlows[index] = edgeFlowTexture
+                output[index] = edgeFlowImage
             }
         }
         
@@ -135,7 +138,7 @@ class Initializer {
         return label - motionRadius
     }
     
-    private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage, edgeCoordinates: Array<[Int]>) -> MotionField {
+    private func beliefPropagation(edgeMap: CIImage, image: CIImage, referenceImageGray: CIImage, edgeCoordinates: Array<[Int]>) -> MTLTexture {
         // Create textures to pass to Metal kernel
         let cgImage = ciContext.createCGImage(image, from: image.extent)!
         let imageTexture = try! textureLoader.newTexture(cgImage: cgImage, options: textureLoaderOptions)
@@ -207,12 +210,37 @@ class Initializer {
             }
         }
         
-        return MotionField()
+        return findBestLabelling(MRF: MRFBuffers[oldBuffer]!)
     }
     
-    private func findBestLabelling(MRF: MarkovRandomField) -> MotionField {
-        // TODO: Find best label for pixel
-        return MotionField()
+    private func findBestLabelling(MRF: MTLBuffer) -> MTLTexture {
+        print("\nFinding best labelling\n\n")
+        
+        let commandBuffer = commandQueue.makeCommandBuffer()!
+        let encoder =  commandBuffer.makeComputeCommandEncoder()!
+        encoder.setComputePipelineState(getBeliefsPipelineState)
+        
+        let edgeFlowTextureDescriptor = MTLTextureDescriptor()
+        edgeFlowTextureDescriptor.pixelFormat = MTLPixelFormat.rgba8Unorm
+        edgeFlowTextureDescriptor.usage = [MTLTextureUsage.shaderWrite, MTLTextureUsage.shaderRead]
+        edgeFlowTextureDescriptor.width = imageWidth
+        edgeFlowTextureDescriptor.height = imageHeight
+        let edgeFlow = device.makeTexture(descriptor: edgeFlowTextureDescriptor)!
+        
+        encoder.setTexture(edgeFlow, index: 0)
+        encoder.setBuffer(MRF, offset: 0, index: 0)
+        encoder.setBytes(&motionDiameter, length: MemoryLayout<Int32>.stride, index: 1)
+        encoder.setBytes(&imageWidth, length: MemoryLayout<Int32>.stride, index: 2)
+        
+        threadsPerGroup = MTLSizeMake(getBeliefsPipelineState.threadExecutionWidth, getBeliefsPipelineState.maxTotalThreadsPerThreadgroup / getBeliefsPipelineState.threadExecutionWidth, 1)
+        threadsPerGrid = MTLSizeMake(edgeFlow.width, edgeFlow.height, 1)
+        encoder.dispatchThreads(threadsPerGrid, threadsPerThreadgroup: threadsPerGroup)
+        
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        
+        return edgeFlow
     }
     
     // MARK: Functions for CPU-based loopy belief propagation - not currently used
