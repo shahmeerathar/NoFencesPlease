@@ -166,10 +166,10 @@ class Initializer {
         var newBuffer = 1
         
         // Direction offsets per coordinate: [X Offset, Y Offset]
-        let DirectionOffsets = [Direction.left: [-1, 0],
-                                Direction.up: [0, -1],
-                                Direction.right: [1, 0],
-                                Direction.down: [0, 1]]
+        let DirectionOffsets = [Direction.left: [Int32(-1), Int32(0)],
+                                Direction.up: [Int32(0), Int32(-1)],
+                                Direction.right: [Int32(1), Int32(0)],
+                                Direction.down: [Int32(0), Int32(1)]]
         
         for round in 0..<numBeliefPropagationIterations {
             print("Initiating message passing round \(round)")
