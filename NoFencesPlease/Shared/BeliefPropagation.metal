@@ -131,8 +131,8 @@ kernel void getBeliefs(texture2d<float, access::write> edgeFlow [[texture(0)]],
     int numMessagesPerPixel = motionDiameter * motionDiameter * NUM_DIRECTIONS;
     int MRFIndex = ((yDim * imgWidth) + xDim) * numMessagesPerPixel;
     
-    int samePixelIndex = ((motionDiameter * motionDiameter) + 1) / 2;
-    int minCost = INFINITY;
+    int centerIndex = motionDiameter / 2;
+    float minCost = INFINITY;
     int minCostYLabel = 0;
     int minCostXLabel = 0;
     
@@ -140,7 +140,7 @@ kernel void getBeliefs(texture2d<float, access::write> edgeFlow [[texture(0)]],
         for (int xLabel = 0; xLabel < motionDiameter; xLabel++) {
             int labelIndex = ((yLabel * motionDiameter) + xLabel) * NUM_DIRECTIONS;
             
-            if (labelIndex == samePixelIndex) { continue; }
+            if (yLabel == centerIndex && xLabel == centerIndex) { continue; }
             
             float cost = 0.0;
             for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
@@ -148,7 +148,7 @@ kernel void getBeliefs(texture2d<float, access::write> edgeFlow [[texture(0)]],
                 
             }
             
-            if (cost < minCost) {
+            if (cost < minCost && cost != 0.0) {
                 minCost = cost;
                 minCostYLabel = yLabel;
                 minCostXLabel = xLabel;
@@ -156,9 +156,8 @@ kernel void getBeliefs(texture2d<float, access::write> edgeFlow [[texture(0)]],
         }
     }
     
-    float rVal = (float) minCostYLabel / (float) motionDiameter;
-    float bVal = (float) minCostXLabel / (float) motionDiameter;
+    float rVal = 1 - (float) minCostYLabel / (float) motionDiameter;
+    float bVal = 1 - (float) minCostXLabel / (float) motionDiameter;
     float4 colour = float4(rVal, 0.0, bVal, 1.0);
-    // colour = float4(0.45, 0.0, 1.0, 1.0);
     edgeFlow.write(colour, gid);
 }
