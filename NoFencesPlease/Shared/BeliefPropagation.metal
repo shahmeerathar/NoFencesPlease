@@ -129,33 +129,36 @@ kernel void getBeliefs(texture2d<float, access::write> edgeFlow [[texture(0)]],
     int yDim = gid[1];
     
     int numMessagesPerPixel = motionDiameter * motionDiameter * NUM_DIRECTIONS;
-    int MRFIndex = (yDim * imgWidth * numMessagesPerPixel) + (xDim * numMessagesPerPixel);
+    int MRFIndex = ((yDim * imgWidth) + xDim) * numMessagesPerPixel;
     
     int samePixelIndex = ((motionDiameter * motionDiameter) + 1) / 2;
     int minCost = INFINITY;
-    int minCostLabel = 0;
+    int minCostYLabel = 0;
+    int minCostXLabel = 0;
     
-    for (int label = 0; label < motionDiameter * motionDiameter; label++) {
-        int labelIndex = label * NUM_DIRECTIONS;
-        
-        if (labelIndex == samePixelIndex) { continue; }
-        
-        int cost = 0;
-        for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
-            cost += MRF[MRFIndex + labelIndex + direction];
-        }
-        
-        if (cost < minCost) {
-            minCost = cost;
-            minCostLabel = label;
+    for (int yLabel = 0; yLabel < motionDiameter; yLabel++) {
+        for (int xLabel = 0; xLabel < motionDiameter; xLabel++) {
+            int labelIndex = ((yLabel * motionDiameter) + xLabel) * NUM_DIRECTIONS;
+            
+            if (labelIndex == samePixelIndex) { continue; }
+            
+            float cost = 0.0;
+            for (int direction = 0; direction < NUM_DIRECTIONS; direction++) {
+                cost += MRF[MRFIndex + labelIndex + direction];
+                
+            }
+            
+            if (cost < minCost) {
+                minCost = cost;
+                minCostYLabel = yLabel;
+                minCostXLabel = xLabel;
+            }
         }
     }
     
-    int yLabel = minCostLabel / motionDiameter;
-    int xLabel = minCostLabel % motionDiameter;
-    
-    float rVal = (float) yLabel / (float) motionDiameter;
-    float bVal = (float) xLabel / (float) motionDiameter;
+    float rVal = (float) minCostYLabel / (float) motionDiameter;
+    float bVal = (float) minCostXLabel / (float) motionDiameter;
     float4 colour = float4(rVal, 0.0, bVal, 1.0);
+    // colour = float4(0.45, 0.0, 1.0, 1.0);
     edgeFlow.write(colour, gid);
 }

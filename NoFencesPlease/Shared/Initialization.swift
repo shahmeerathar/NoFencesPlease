@@ -128,6 +128,7 @@ class Initializer {
                 let edgeFlowImage = CIImage(mtlTexture: edgeFlowTexture, options: nil)
                 edgeFlows[index] = edgeFlowTexture
                 output[index] = edgeFlowImage
+                break
             }
         }
         
